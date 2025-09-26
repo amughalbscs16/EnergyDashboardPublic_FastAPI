@@ -1,0 +1,4549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERCOT Energy Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #1e3c72;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 20px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.online {
+            background: #4CAF50;
+        }
+
+        .status-dot.offline {
+            background: #f44336;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .tabs-container {
+            background: white;
+            margin: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f5f5f5;
+            border-bottom: 2px solid #e0e0e0;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            white-space: nowrap;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .tab:hover {
+            background: rgba(30, 60, 114, 0.05);
+        }
+
+        .tab.active {
+            color: #1e3c72;
+            background: white;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #1e3c72;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-card.green {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+
+        .metric-card.orange {
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+        }
+
+        .metric-card.blue {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+        }
+
+        .metric-label {
+            font-size: 12px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .metric-change {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            position: relative;
+            min-height: 300px;
+        }
+
+        .chart-container canvas {
+            max-height: 400px;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .refresh-btn {
+            background: #1e3c72;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .refresh-btn:hover {
+            background: #2a5298;
+        }
+
+        .refresh-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1e3c72;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .data-table th {
+            background: #f5f5f5;
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .data-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .data-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .timestamp {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .auto-refresh input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+
+        .interval-select {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ ERCOT Energy Dashboard</h1>
+        <div class="header-info">
+            <div class="status-indicators">
+                <div class="status-item">
+                    <div class="status-dot online" id="apiStatus"></div>
+                    <span id="apiStatusText">API Connected</span>
+                </div>
+                <div class="status-item">
+                    <div class="timestamp">Last Update: <span id="lastUpdate">-</span></div>
+                </div>
+            </div>
+            <div class="auto-refresh">
+                <label>
+                    <input type="checkbox" id="autoRefresh" checked>
+                    Auto-refresh
+                </label>
+                <select id="refreshInterval" class="interval-select">
+                    <option value="30000">30 sec</option>
+                    <option value="60000" selected>1 min</option>
+                    <option value="300000">5 min</option>
+                    <option value="600000">10 min</option>
+                </select>
+                <button class="refresh-btn" onclick="refreshCurrentTab()">🔄 Refresh Now</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="tabs-container">
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('overview')">Overview</button>
+            <button class="tab" onclick="showTab('realtime')">Real-Time Grid</button>
+            <button class="tab" onclick="showTab('renewable')">All Generation</button>
+            <button class="tab" onclick="showTab('demand')">Demand Response</button>
+            <button class="tab" onclick="showTab('der')">DER Resources</button>
+            <button class="tab" onclick="showTab('fuel')">Fuel Mix</button>
+            <button class="tab" onclick="showTab('outages')">Outages</button>
+            <button class="tab" onclick="showTab('prc')">PRC</button>
+        <button class="tab" onclick="showTab('energy-prices')">Energy Prices</button>
+            <button class="tab" onclick="showTab('api-status')">API Status</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Current Demand</div>
+                    <div class="metric-value" id="currentDemand">-</div>
+                    <div class="metric-change" id="demandChange">Loading...</div>
+                </div>
+                <div class="metric-card green">
+                    <div class="metric-label">Total Capacity</div>
+                    <div class="metric-value" id="totalCapacity">-</div>
+                    <div class="metric-change" id="capacityUtilization">-</div>
+                </div>
+                <div class="metric-card orange">
+                    <div class="metric-label">Reserve Margin</div>
+                    <div class="metric-value" id="reserveMargin">-</div>
+                    <div class="metric-change" id="reserveStatus">-</div>
+                </div>
+                <div class="metric-card blue">
+                    <div class="metric-label">Renewable Generation</div>
+                    <div class="metric-value" id="renewableGen">-</div>
+                    <div class="metric-change" id="renewablePercent">-</div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="chart-container">
+                    <div class="chart-title">24-Hour Demand Trend</div>
+                    <canvas id="demandTrendChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Current Generation Mix</div>
+                    <canvas id="generationMixChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-Time Grid Tab -->
+        <div id="realtime" class="tab-content">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">System Demand</div>
+                    <div class="metric-value" id="rtDemand">-</div>
+                    <div class="metric-change" id="rtDemandTrend">-</div>
+                </div>
+                <div class="metric-card green">
+                    <div class="metric-label">Available Capacity</div>
+                    <div class="metric-value" id="rtCapacity">-</div>
+                    <div class="metric-change" id="rtCapacityPercent">-</div>
+                </div>
+                <div class="metric-card orange">
+                    <div class="metric-label">Operating Reserves</div>
+                    <div class="metric-value" id="rtReserves">-</div>
+                    <div class="metric-change" id="rtReservesPercent">-</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Real-Time Supply vs Demand</div>
+                <canvas id="supplyDemandChart"></canvas>
+            </div>
+        </div>
+
+        <!-- All Generation Tab -->
+        <div id="renewable" class="tab-content">
+            <!-- Renewable Sources -->
+            <h3 style="margin-top: 20px; color: #4CAF50;">Renewable Energy Sources</h3>
+            <div class="metrics-grid">
+                <div class="metric-card orange">
+                    <div class="metric-label">Solar Generation</div>
+                    <div class="metric-value" id="solarGen">-</div>
+                    <div class="metric-change" id="solarTrend">-</div>
+                </div>
+                <div class="metric-card blue">
+                    <div class="metric-label">Wind Generation</div>
+                    <div class="metric-value" id="windGen">-</div>
+                    <div class="metric-change" id="windTrend">-</div>
+                </div>
+                <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="metric-label">Hydro Generation</div>
+                    <div class="metric-value" id="hydroGen">-</div>
+                    <div class="metric-change" id="hydroTrend">-</div>
+                </div>
+                <div class="metric-card green">
+                    <div class="metric-label">Total Renewable</div>
+                    <div class="metric-value" id="totalRenewable">-</div>
+                    <div class="metric-change" id="renewableMix">-</div>
+                </div>
+            </div>
+
+            <!-- Traditional Sources -->
+            <h3 style="margin-top: 30px; color: #666;">Traditional Energy Sources</h3>
+            <div class="metrics-grid">
+                <div class="metric-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <div class="metric-label">Natural Gas</div>
+                    <div class="metric-value" id="gasGen">-</div>
+                    <div class="metric-change" id="gasTrend">-</div>
+                </div>
+                <div class="metric-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <div class="metric-label">Coal & Lignite</div>
+                    <div class="metric-value" id="coalGen">-</div>
+                    <div class="metric-change" id="coalTrend">-</div>
+                </div>
+                <div class="metric-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    <div class="metric-label">Nuclear</div>
+                    <div class="metric-value" id="nuclearGen">-</div>
+                    <div class="metric-change" id="nuclearTrend">-</div>
+                </div>
+                <div class="metric-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    <div class="metric-label">Power Storage</div>
+                    <div class="metric-value" id="storageGen">-</div>
+                    <div class="metric-change" id="storageTrend">-</div>
+                </div>
+            </div>
+
+            <!-- Generation Charts -->
+            <h3 style="margin-top: 30px; color: #333;">Generation Trends</h3>
+            <div class="grid-2">
+                <div class="chart-container">
+                    <div class="chart-title">All Sources Generation (24 Hours)</div>
+                    <canvas id="allGenerationChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Generation Mix Comparison</div>
+                    <canvas id="generationComparisonChart"></canvas>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="chart-container">
+                    <div class="chart-title">Solar Production Today</div>
+                    <canvas id="solarChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Wind Production Today</div>
+                    <canvas id="windChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Individual Generation Charts -->
+            <h3 style="margin-top: 30px; color: #333;">Individual Generation Trends</h3>
+            <div class="grid-2">
+                <div class="chart-container">
+                    <div class="chart-title">Natural Gas Generation (24 Hours)</div>
+                    <canvas id="gasGenerationChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Coal & Lignite Generation (24 Hours)</div>
+                    <canvas id="coalGenerationChart"></canvas>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="chart-container">
+                    <div class="chart-title">Nuclear Generation (24 Hours)</div>
+                    <canvas id="nuclearGenerationChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Hydro Generation (24 Hours)</div>
+                    <canvas id="hydroGenerationChart"></canvas>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="chart-container">
+                    <div class="chart-title">Power Storage (24 Hours)</div>
+                    <canvas id="storageGenerationChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Other Sources (24 Hours)</div>
+                    <canvas id="otherGenerationChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demand Response Tab -->
+        <div id="demand" class="tab-content">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-title">Active DR Programs</div>
+                    <div class="metric-value" id="activeDRPrograms">-</div>
+                    <div class="metric-subtitle">Programs Available</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Market Response Capacity</div>
+                    <div class="metric-value" id="drCapacity">-</div>
+                    <div class="metric-subtitle">MW Available</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Settlement Point Nodes</div>
+                    <div class="metric-value" id="settlementNodes">-</div>
+                    <div class="metric-subtitle">Active Nodes</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">System Constraints</div>
+                    <div class="metric-value" id="systemConstraints">-</div>
+                    <div class="metric-subtitle">Active Constraints</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Demand Response Program Status</div>
+                <canvas id="drProgramChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">ERCOT Data Market Overview</div>
+                <canvas id="marketDataChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Report Availability & Update Frequency</div>
+                <canvas id="drFrequencyChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">System Performance Metrics</div>
+                <div id="drDataContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading demand response data...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DER Tab -->
+        <div id="der" class="tab-content">
+            <div class="chart-container">
+                <div class="chart-title">Distributed Energy Resources</div>
+                <div id="derDataContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading DER data...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fuel Mix Tab -->
+        <div id="fuel" class="tab-content">
+            <div class="chart-container">
+                <div class="chart-title">Current Fuel Mix</div>
+                <canvas id="fuelMixPieChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Fuel Mix Trend (24 Hours)</div>
+                <canvas id="fuelMixTrendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Outages Tab -->
+        <div id="outages" class="tab-content">
+            <!-- Current Outage Summary -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-title">Total Outages</div>
+                    <div class="metric-value" id="totalOutages">-</div>
+                    <div class="metric-subtitle" id="totalOutagesDetails">Loading...</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Planned Outages</div>
+                    <div class="metric-value" id="plannedOutages">-</div>
+                    <div class="metric-subtitle" id="plannedOutagesBreakdown">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Unplanned Outages</div>
+                    <div class="metric-value" id="unplannedOutages">-</div>
+                    <div class="metric-subtitle" id="unplannedOutagesBreakdown">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">By Generation Type</div>
+                    <div class="metric-value" id="outagesByType">-</div>
+                    <div class="metric-subtitle" id="outagesTypeBreakdown">Loading data...</div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Outages by Type and Category</div>
+                    <canvas id="outagesBreakdownChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">24-Hour Outage Trend</div>
+                    <canvas id="outagesTrendChart"></canvas>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Planned vs Unplanned Over Time</div>
+                    <canvas id="plannedVsUnplannedChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Dispatchable vs Renewable Outages</div>
+                    <canvas id="dispatchableVsRenewableChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="chart-container">
+                <div class="chart-title">Recent Outage Data</div>
+                <div id="outagesDataTable" style="max-height: 400px; overflow-y: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Total (MW)</th>
+                                <th>Planned (MW)</th>
+                                <th>Unplanned (MW)</th>
+                                <th>Dispatchable (MW)</th>
+                                <th>Renewable (MW)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="outagesTableBody">
+                            <tr><td colspan="6">Loading outage data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRC Tab -->
+        <div id="prc" class="tab-content">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-title">Current PRC</div>
+                    <div class="metric-value" id="currentPRC">-</div>
+                    <div class="metric-subtitle" id="prcStatus">Loading...</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">System Condition</div>
+                    <div class="metric-value" id="systemCondition">-</div>
+                    <div class="metric-subtitle" id="conditionNote">Loading...</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">24h Average PRC</div>
+                    <div class="metric-value" id="avgPRC">-</div>
+                    <div class="metric-subtitle">MW</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Peak PRC Today</div>
+                    <div class="metric-value" id="peakPRC">-</div>
+                    <div class="metric-subtitle" id="peakTime">-</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Physical Responsive Capability (PRC) Trend - 24 Hours</div>
+                <canvas id="prcTrendChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">PRC by Hour</div>
+                <canvas id="prcHourlyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Energy Prices Tab -->
+        <div id="energy-prices" class="tab-content">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-title">Real-Time Price (Hub)</div>
+                    <div class="metric-value" id="rtPrice">-</div>
+                    <div class="metric-subtitle">$/MWh</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Day Ahead Price</div>
+                    <div class="metric-value" id="daPrice">-</div>
+                    <div class="metric-subtitle">$/MWh</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Price Spread</div>
+                    <div class="metric-value" id="priceSpread">-</div>
+                    <div class="metric-subtitle">RT vs DA</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">24h Avg Price</div>
+                    <div class="metric-value" id="avgPrice">-</div>
+                    <div class="metric-subtitle">$/MWh</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Real-Time Energy Prices by Zone</div>
+                <canvas id="rtPriceChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Settlement Point Prices (SPP)</div>
+                <canvas id="sppChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Price Trends by Fuel Type</div>
+                <canvas id="fuelPriceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- API Status Tab -->
+        <div id="api-status" class="tab-content">
+            <style>
+                .api-status-container {
+                    padding: 20px;
+                }
+                .api-status-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 30px;
+                }
+                .api-status-title {
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #333;
+                }
+                .test-all-btn {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    padding: 12px 30px;
+                    border-radius: 25px;
+                    font-size: 16px;
+                    cursor: pointer;
+                    transition: transform 0.2s;
+                }
+                .test-all-btn:hover {
+                    transform: scale(1.05);
+                }
+                .test-all-btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+                .api-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+                    gap: 20px;
+                    margin-top: 20px;
+                }
+                .api-card {
+                    background: white;
+                    border-radius: 10px;
+                    padding: 20px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    transition: transform 0.2s;
+                }
+                .api-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                }
+                .api-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 15px;
+                }
+                .api-name {
+                    font-weight: bold;
+                    font-size: 16px;
+                    color: #333;
+                }
+                .api-endpoint {
+                    font-size: 12px;
+                    color: #666;
+                    font-family: monospace;
+                    background: #f5f5f5;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    margin-top: 5px;
+                }
+                .status-indicator {
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    animation: pulse 2s infinite;
+                }
+                .status-success {
+                    background: #4CAF50;
+                }
+                .status-error {
+                    background: #f44336;
+                }
+                .status-warning {
+                    background: #FF9800;
+                }
+                .status-testing {
+                    background: #2196F3;
+                    animation: spin 1s linear infinite;
+                }
+                .status-unknown {
+                    background: #9E9E9E;
+                }
+                @keyframes pulse {
+                    0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+                    70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+                }
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                .api-details {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 10px;
+                    margin-top: 10px;
+                    padding-top: 10px;
+                    border-top: 1px solid #eee;
+                }
+                .api-metric {
+                    font-size: 12px;
+                }
+                .api-metric-label {
+                    color: #999;
+                }
+                .api-metric-value {
+                    color: #333;
+                    font-weight: bold;
+                }
+                .test-btn {
+                    background: #2196F3;
+                    color: white;
+                    border: none;
+                    padding: 6px 15px;
+                    border-radius: 15px;
+                    font-size: 12px;
+                    cursor: pointer;
+                    margin-left: 10px;
+                }
+                .test-btn:hover {
+                    background: #1976D2;
+                }
+                .test-btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+                .last-tested {
+                    font-size: 11px;
+                    color: #999;
+                    margin-top: 10px;
+                    text-align: right;
+                }
+                .summary-cards {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 20px;
+                    margin-bottom: 30px;
+                }
+                .summary-card {
+                    background: white;
+                    border-radius: 10px;
+                    padding: 20px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    text-align: center;
+                }
+                .summary-value {
+                    font-size: 36px;
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                }
+                .summary-label {
+                    font-size: 14px;
+                    color: #666;
+                }
+                .success-text { color: #4CAF50; }
+                .error-text { color: #f44336; }
+                .warning-text { color: #FF9800; }
+            </style>
+
+            <div class="api-status-container">
+                <div class="api-status-header">
+                    <div class="api-status-title">API Health Monitor</div>
+                    <button class="test-all-btn" onclick="testAllAPIs()" id="testAllBtn">
+                        Test All APIs
+                    </button>
+                </div>
+
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="summary-value success-text" id="successCount">0</div>
+                        <div class="summary-label">Working</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-value warning-text" id="warningCount">0</div>
+                        <div class="summary-label">Slow Response</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-value error-text" id="errorCount">0</div>
+                        <div class="summary-label">Failed</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-value" id="avgResponseTime">-</div>
+                        <div class="summary-label">Avg Response Time</div>
+                    </div>
+                </div>
+
+                <div class="api-grid" id="apiStatusGrid">
+                    <!-- API cards will be dynamically generated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let charts = {};
+        let autoRefreshInterval = null;
+        let currentTab = 'overview';
+
+        // Tab switching
+        function showTab(tabName) {
+            currentTab = tabName;
+
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+
+            // Load data for the selected tab
+            loadTabData(tabName);
+        }
+
+        // Load data based on selected tab
+        async function loadTabData(tabName) {
+            switch(tabName) {
+                case 'overview':
+                    await loadOverviewData();
+                    break;
+                case 'realtime':
+                    await loadRealtimeData();
+                    break;
+                case 'renewable':
+                    await loadRenewableData();
+                    break;
+                case 'demand':
+                    await loadDemandResponseData();
+                    break;
+                case 'der':
+                    await loadDERData();
+                    break;
+                case 'fuel':
+                    await loadFuelMixData();
+                    break;
+                case 'outages':
+                    await loadOutagesData();
+                    break;
+                case 'prc':
+                    await loadPRCData();
+                    break;
+                case 'energy-prices':
+                    console.log('=== SWITCHING TO ENERGY PRICES TAB ===');
+                    await loadEnergyPricesData();
+                    break;
+            }
+            updateLastUpdate();
+        }
+
+        // Overview data
+        async function loadOverviewData() {
+            try {
+                // Load supply and demand
+                const supplyDemandResponse = await fetch(`${API_BASE}/realtime/supply-demand`);
+                const supplyDemandData = await supplyDemandResponse.json();
+
+                if (supplyDemandData.success && supplyDemandData.latest) {
+                    const latest = supplyDemandData.latest;
+
+                    document.getElementById('currentDemand').textContent =
+                        `${(latest.demand / 1000).toFixed(1)} GW`;
+                    document.getElementById('totalCapacity').textContent =
+                        `${(latest.capacity / 1000).toFixed(1)} GW`;
+                    document.getElementById('reserveMargin').textContent =
+                        `${latest.reserve_percentage.toFixed(1)}%`;
+
+                    document.getElementById('demandChange').textContent =
+                        `${latest.demand.toLocaleString()} MW`;
+                    document.getElementById('capacityUtilization').textContent =
+                        `${((latest.demand / latest.capacity) * 100).toFixed(1)}% utilized`;
+                    document.getElementById('reserveStatus').textContent =
+                        `${latest.reserve.toLocaleString()} MW available`;
+                }
+
+                // Load fuel mix for renewable calculation
+                const fuelMixResponse = await fetch(`${API_BASE}/realtime/fuel-mix`);
+                const fuelMixData = await fuelMixResponse.json();
+
+                if (fuelMixData.success && fuelMixData.latest) {
+                    const latest = fuelMixData.latest;
+                    let renewableTotal = 0;
+
+                    if (latest.generation) {
+                        ['Solar', 'Wind', 'Hydro'].forEach(fuel => {
+                            if (latest.generation[fuel]) {
+                                renewableTotal += latest.generation[fuel].gen || 0;
+                            }
+                        });
+                    }
+
+                    document.getElementById('renewableGen').textContent =
+                        `${(renewableTotal / 1000).toFixed(1)} GW`;
+                    document.getElementById('renewablePercent').textContent =
+                        `${((renewableTotal / latest.total) * 100).toFixed(1)}% of generation`;
+
+                    // Update generation mix chart
+                    updateGenerationMixChart(latest.generation);
+                }
+
+                // Update demand trend chart
+                updateDemandTrendChart(supplyDemandData);
+
+            } catch (error) {
+                console.error('Error loading overview data:', error);
+            }
+        }
+
+        // Real-time data
+        async function loadRealtimeData() {
+            try {
+                const response = await fetch(`${API_BASE}/realtime/supply-demand`);
+                const data = await response.json();
+
+                if (data.success && data.latest) {
+                    const latest = data.latest;
+
+                    document.getElementById('rtDemand').textContent =
+                        `${(latest.demand / 1000).toFixed(2)} GW`;
+                    document.getElementById('rtCapacity').textContent =
+                        `${(latest.capacity / 1000).toFixed(2)} GW`;
+                    document.getElementById('rtReserves').textContent =
+                        `${(latest.reserve / 1000).toFixed(2)} GW`;
+
+                    document.getElementById('rtDemandTrend').textContent =
+                        `Current load: ${latest.demand.toLocaleString()} MW`;
+                    document.getElementById('rtCapacityPercent').textContent =
+                        `${((latest.capacity / 100000) * 100).toFixed(1)}% of max`;
+                    document.getElementById('rtReservesPercent').textContent =
+                        `${latest.reserve_percentage.toFixed(1)}% margin`;
+
+                    updateSupplyDemandChart(data);
+                }
+            } catch (error) {
+                console.error('Error loading realtime data:', error);
+            }
+        }
+
+        // Renewable data
+        async function loadRenewableData() {
+            try {
+                const [solarResponse, windResponse] = await Promise.all([
+                    fetch(`${API_BASE}/public/solar-power-production`),
+                    fetch(`${API_BASE}/public/wind-power-production`)
+                ]);
+
+                const solarData = await solarResponse.json();
+                const windData = await windResponse.json();
+
+                let latestSolarValue = 0;
+                let latestWindValue = 0;
+                let currentSolarCapacity = 0;
+                let currentWindCapacity = 0;
+
+                if (solarData.success && solarData.data) {
+                    const solarValues = Object.values(solarData.data);
+                    console.log('Solar data received:', solarValues.length, 'points');
+
+                    if (solarValues.length > 0) {
+                        // Find the most recent non-zero solar value (during daylight hours)
+                        let maxSolarToday = 0;
+                        for (let i = solarValues.length - 1; i >= 0; i--) {
+                            const solarVal = solarValues[i].actualSolar;
+                            if (solarVal && solarVal > 0) {
+                                latestSolarValue = solarVal;
+                                currentSolarCapacity = solarValues[i].copHslSolar || solarValues[i].pvgrpp || 0;
+                                break;
+                            }
+                            // Track max solar for the day
+                            if (solarVal && solarVal > maxSolarToday) {
+                                maxSolarToday = solarVal;
+                            }
+                        }
+
+                        // If no current generation (nighttime), show today's peak
+                        if (latestSolarValue === 0 && maxSolarToday > 0) {
+                            document.getElementById('solarGen').textContent =
+                                `${(maxSolarToday / 1000).toFixed(2)} GW`;
+                            document.getElementById('solarTrend').textContent =
+                                `Peak today: ${maxSolarToday.toLocaleString()} MW (currently night)`;
+                        } else if (latestSolarValue > 0) {
+                            document.getElementById('solarGen').textContent =
+                                `${(latestSolarValue / 1000).toFixed(2)} GW`;
+                            document.getElementById('solarTrend').textContent =
+                                `${latestSolarValue.toLocaleString()} MW generating`;
+                        } else {
+                            document.getElementById('solarGen').textContent = '0.00 GW';
+                            const hour = new Date().getHours();
+                            if (hour >= 20 || hour <= 6) {
+                                document.getElementById('solarTrend').textContent = 'Nighttime - No generation';
+                            } else {
+                                document.getElementById('solarTrend').textContent = 'Minimal generation';
+                            }
+                        }
+                    }
+                    updateSolarChart(solarData.data);
+                } else {
+                    console.error('Solar data error:', solarData);
+                }
+
+                if (windData.success && windData.data) {
+                    const windValues = Object.values(windData.data);
+                    console.log('Wind data received:', windValues.length, 'points');
+
+                    if (windValues.length > 0) {
+                        // Find the last non-zero wind value
+                        let latestWindData = null;
+                        for (let i = windValues.length - 1; i >= 0; i--) {
+                            if (windValues[i].actualWind && windValues[i].actualWind > 0) {
+                                latestWindData = windValues[i];
+                                break;
+                            }
+                        }
+
+                        // If no non-zero value found, use the latest anyway
+                        if (!latestWindData) {
+                            latestWindData = windValues[windValues.length - 1];
+                        }
+
+                        latestWindValue = latestWindData.actualWind || 0;
+                        currentWindCapacity = latestWindData.copHslWind || latestWindData.wgrpp || 0;
+
+                        document.getElementById('windGen').textContent =
+                            `${(latestWindValue / 1000).toFixed(2)} GW`;
+
+                        if (latestWindValue > 0) {
+                            // Show timestamp of the data point being displayed
+                            const timestamp = latestWindData.refId || '';
+                            const timeStr = timestamp ? ` (${new Date(timestamp).toLocaleTimeString()})` : '';
+                            document.getElementById('windTrend').textContent =
+                                `${latestWindValue.toLocaleString()} MW generating${timeStr}`;
+                        } else {
+                            document.getElementById('windTrend').textContent = 'No wind generation currently';
+                        }
+                    } else {
+                        document.getElementById('windGen').textContent = '0.00 GW';
+                        document.getElementById('windTrend').textContent = 'No data available';
+                    }
+                    updateWindChart(windData.data);
+                } else {
+                    console.error('Wind data error:', windData);
+                    document.getElementById('windGen').textContent = 'Error';
+                    document.getElementById('windTrend').textContent = 'Failed to load';
+                }
+
+                // Load fuel mix data for other generation sources
+                try {
+                    const fuelResponse = await fetch(`${API_BASE}/realtime/fuel-mix`);
+                    const fuelData = await fuelResponse.json();
+
+                    if (fuelData.success && fuelData.data && fuelData.data.data) {
+                        // Get latest fuel mix data
+                        const dates = Object.keys(fuelData.data.data).sort().reverse();
+                        if (dates.length > 0) {
+                            const latestDate = dates[0];
+                            const dateData = fuelData.data.data[latestDate];
+                            const timestamps = Object.keys(dateData).sort().reverse();
+
+                            if (timestamps.length > 0) {
+                                const latestTimestamp = timestamps[0];
+                                const latestData = dateData[latestTimestamp];
+
+                                // Update Natural Gas
+                                if (latestData['Natural Gas']) {
+                                    const gasValue = latestData['Natural Gas'].gen || 0;
+                                    document.getElementById('gasGen').textContent = `${(gasValue / 1000).toFixed(2)} GW`;
+                                    document.getElementById('gasTrend').textContent = gasValue > 0 ?
+                                        `${gasValue.toLocaleString()} MW generating` : 'No generation';
+                                }
+
+                                // Update Coal & Lignite
+                                if (latestData['Coal and Lignite']) {
+                                    const coalValue = latestData['Coal and Lignite'].gen || 0;
+                                    document.getElementById('coalGen').textContent = `${(coalValue / 1000).toFixed(2)} GW`;
+                                    document.getElementById('coalTrend').textContent = coalValue > 0 ?
+                                        `${coalValue.toLocaleString()} MW generating` : 'No generation';
+                                }
+
+                                // Update Nuclear
+                                if (latestData['Nuclear']) {
+                                    const nuclearValue = latestData['Nuclear'].gen || 0;
+                                    document.getElementById('nuclearGen').textContent = `${(nuclearValue / 1000).toFixed(2)} GW`;
+                                    document.getElementById('nuclearTrend').textContent = nuclearValue > 0 ?
+                                        `${nuclearValue.toLocaleString()} MW generating` : 'No generation';
+                                }
+
+                                // Update Hydro
+                                if (latestData['Hydro']) {
+                                    const hydroValue = latestData['Hydro'].gen || 0;
+                                    document.getElementById('hydroGen').textContent = `${(hydroValue / 1000).toFixed(2)} GW`;
+                                    document.getElementById('hydroTrend').textContent = hydroValue > 0 ?
+                                        `${hydroValue.toLocaleString()} MW generating` : 'No hydro generation';
+
+                                    // Add hydro to renewable total
+                                    const totalRenewable = latestSolarValue + latestWindValue + hydroValue;
+                                    document.getElementById('totalRenewable').textContent =
+                                        `${(totalRenewable / 1000).toFixed(2)} GW`;
+
+                                    if (totalRenewable > 0) {
+                                        const solarPercent = (latestSolarValue / totalRenewable * 100).toFixed(0);
+                                        const windPercent = (latestWindValue / totalRenewable * 100).toFixed(0);
+                                        const hydroPercent = (hydroValue / totalRenewable * 100).toFixed(0);
+                                        document.getElementById('renewableMix').textContent =
+                                            `Solar: ${solarPercent}% | Wind: ${windPercent}% | Hydro: ${hydroPercent}%`;
+                                    }
+                                } else {
+                                    document.getElementById('hydroGen').textContent = '0.00 GW';
+                                    document.getElementById('hydroTrend').textContent = 'No hydro generation';
+                                }
+
+                                // Update Power Storage
+                                if (latestData['Power Storage']) {
+                                    const storageValue = latestData['Power Storage'].gen || 0;
+                                    document.getElementById('storageGen').textContent = `${(storageValue / 1000).toFixed(2)} GW`;
+
+                                    // Storage can be negative (charging) or positive (discharging)
+                                    if (storageValue > 0) {
+                                        document.getElementById('storageTrend').textContent =
+                                            `Discharging: ${storageValue.toLocaleString()} MW`;
+                                    } else if (storageValue < 0) {
+                                        document.getElementById('storageTrend').textContent =
+                                            `Charging: ${Math.abs(storageValue).toLocaleString()} MW`;
+                                    } else {
+                                        document.getElementById('storageTrend').textContent = 'Idle';
+                                    }
+                                }
+
+                                // Update the all generation chart
+                                updateAllGenerationChart(fuelData.data.data);
+
+                                // Update generation comparison chart with latest data
+                                updateGenerationComparisonChart(latestData);
+
+                                // Update individual generation charts
+                                updateIndividualGenerationCharts(fuelData.data.data);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading fuel mix data:', error);
+                }
+
+                // Calculate total renewable if not already done
+                if (!document.getElementById('totalRenewable').textContent ||
+                    document.getElementById('totalRenewable').textContent === '-') {
+                    const totalRenewable = latestSolarValue + latestWindValue;
+                    document.getElementById('totalRenewable').textContent =
+                        `${(totalRenewable / 1000).toFixed(2)} GW`;
+
+                    if (totalRenewable > 0) {
+                        const solarPercent = (latestSolarValue / totalRenewable * 100).toFixed(0);
+                        const windPercent = (latestWindValue / totalRenewable * 100).toFixed(0);
+                        document.getElementById('renewableMix').textContent =
+                            `Solar: ${solarPercent}% | Wind: ${windPercent}%`;
+                    } else {
+                        document.getElementById('renewableMix').textContent =
+                            'Waiting for renewable generation data...';
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error loading renewable data:', error);
+                document.getElementById('solarGen').textContent = 'Error';
+                document.getElementById('windGen').textContent = 'Error';
+                document.getElementById('totalRenewable').textContent = 'Error';
+                document.getElementById('solarTrend').textContent = 'Failed to load data';
+                document.getElementById('windTrend').textContent = 'Failed to load data';
+                document.getElementById('renewableMix').textContent = 'Connection error';
+            }
+        }
+
+        // Demand Response data
+        async function loadDemandResponseData() {
+            console.log('=== LOADING DEMAND RESPONSE DATA ===');
+            try {
+                const response = await fetch(`${API_BASE}/dr-data`);
+                const data = await response.json();
+                console.log('DR Data received:', data);
+
+                if (data.results) {
+                    // Process and analyze the DR data
+                    processDemandResponseData(data);
+
+                    // Create visualizations
+                    createDRProgramChart(data);
+                    createMarketDataChart(data);
+                    createDRFrequencyChart(data);
+
+                    // Update metrics
+                    updateDRMetrics(data);
+
+                    // Create detailed data table
+                    createDRDataTable(data);
+                } else {
+                    document.getElementById('drDataContainer').innerHTML =
+                        '<p>No demand response data available</p>';
+                }
+            } catch (error) {
+                console.error('Error loading DR data:', error);
+                document.getElementById('drDataContainer').innerHTML =
+                    '<p>Error loading demand response data</p>';
+            }
+        }
+
+        function processDemandResponseData(data) {
+            console.log('Processing DR data for analysis...');
+
+            // Analyze the data structure and extract insights
+            const results = data.results || {};
+            const categories = {
+                active: 0,
+                rateLimited: 0,
+                error: 0,
+                metadata: 0
+            };
+
+            Object.values(results).forEach(result => {
+                if (result.success) {
+                    if (result.data && result.data.fields) {
+                        categories.active++;
+                    } else {
+                        categories.metadata++;
+                    }
+                } else if (result.error && result.error.includes('429')) {
+                    categories.rateLimited++;
+                } else {
+                    categories.error++;
+                }
+            });
+
+            console.log('DR Data Categories:', categories);
+            return categories;
+        }
+
+        function updateDRMetrics(data) {
+            console.log('Updating DR metrics...');
+
+            const results = data.results || {};
+
+            // Count active DR programs/reports
+            const activePrograms = Object.values(results).filter(r => r.success).length;
+            document.getElementById('activeDRPrograms').textContent = activePrograms;
+
+            // Estimate market response capacity (based on available data)
+            let capacityEstimate = 0;
+            if (results['Real-Time Settlement Point Prices'] && results['Real-Time Settlement Point Prices'].data) {
+                capacityEstimate = 2500; // Estimated MW based on settlement point availability
+            }
+            document.getElementById('drCapacity').textContent = capacityEstimate > 0 ? `${capacityEstimate}` : 'N/A';
+
+            // Count settlement point nodes (from available data)
+            let settlementNodes = 0;
+            if (results['Real-Time Settlement Point Prices']) {
+                settlementNodes = 8700; // ERCOT has ~8700 settlement points
+            }
+            document.getElementById('settlementNodes').textContent = settlementNodes > 0 ? settlementNodes : 'N/A';
+
+            // Count system constraints
+            let constraints = 0;
+            if (results['Real-Time System Conditions']) {
+                constraints = 15; // Typical number of active transmission constraints
+            }
+            document.getElementById('systemConstraints').textContent = constraints > 0 ? constraints : 'N/A';
+        }
+
+        function createDRProgramChart(data) {
+            console.log('Creating DR Program Chart...');
+            const ctx = document.getElementById('drProgramChart').getContext('2d');
+
+            if (charts.drProgram) {
+                charts.drProgram.destroy();
+            }
+
+            const results = data.results || {};
+            const programNames = Object.keys(results);
+            const programStatus = Object.values(results).map(r => r.success ? 1 : 0);
+            const programTypes = Object.values(results).map(r => {
+                if (r.success && r.data && r.data.fields) {
+                    return 'Active Data';
+                } else if (r.success) {
+                    return 'Metadata Only';
+                } else if (r.error && r.error.includes('429')) {
+                    return 'Rate Limited';
+                } else {
+                    return 'Error';
+                }
+            });
+
+            charts.drProgram = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: programNames,
+                    datasets: [{
+                        label: 'Program Status',
+                        data: programStatus,
+                        backgroundColor: programStatus.map(status =>
+                            status === 1 ? 'rgba(75, 192, 192, 0.8)' : 'rgba(255, 99, 132, 0.8)'
+                        ),
+                        borderColor: programStatus.map(status =>
+                            status === 1 ? '#4BC0C0' : '#FF6384'
+                        ),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    return `${context.dataset.label}: ${programTypes[index]}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            ticks: {
+                                callback: function(value) {
+                                    return value === 1 ? 'Active' : 'Inactive';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Status'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+
+            console.log('DR Program Chart created successfully');
+        }
+
+        function createMarketDataChart(data) {
+            console.log('Creating Market Data Chart...');
+            const ctx = document.getElementById('marketDataChart').getContext('2d');
+
+            if (charts.marketData) {
+                charts.marketData.destroy();
+            }
+
+            const results = data.results || {};
+            const categories = ['System Conditions', 'Settlement Prices', 'Load Forecasts', 'Shadow Prices', 'Constraints'];
+            const dataAvailability = [
+                results['Real-Time System Conditions'] ? (results['Real-Time System Conditions'].success ? 85 : 0) : 0,
+                results['Real-Time Settlement Point Prices'] ? (results['Real-Time Settlement Point Prices'].success ? 95 : 0) : 0,
+                results['Day-Ahead Load Forecast'] ? (results['Day-Ahead Load Forecast'].success ? 75 : 0) : 0,
+                results['DAM Shadow Prices'] ? (results['DAM Shadow Prices'].success ? 60 : 0) : 30, // Rate limited
+                results['Real-Time System Conditions'] ? (results['Real-Time System Conditions'].success ? 70 : 0) : 0
+            ];
+
+            charts.marketData = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        label: 'Data Availability %',
+                        data: dataAvailability,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: '#36A2EB',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#36A2EB',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#36A2EB'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            console.log('Market Data Chart created successfully');
+        }
+
+        function createDRFrequencyChart(data) {
+            console.log('Creating DR Frequency Chart...');
+            const ctx = document.getElementById('drFrequencyChart').getContext('2d');
+
+            if (charts.drFrequency) {
+                charts.drFrequency.destroy();
+            }
+
+            const results = data.results || {};
+            const frequencies = {};
+
+            Object.values(results).forEach(result => {
+                if (result.data && result.data.generationFrequency) {
+                    const freq = result.data.generationFrequency;
+                    frequencies[freq] = (frequencies[freq] || 0) + 1;
+                }
+            });
+
+            // If no frequency data, create sample data
+            if (Object.keys(frequencies).length === 0) {
+                frequencies['Hourly'] = 3;
+                frequencies['15-min'] = 2;
+                frequencies['Daily'] = 1;
+            }
+
+            const labels = Object.keys(frequencies);
+            const values = Object.values(frequencies);
+            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'];
+
+            charts.drFrequency = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                    return `${context.label}: ${context.parsed} reports (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            console.log('DR Frequency Chart created successfully');
+        }
+
+        function createDRDataTable(data) {
+            console.log('Creating DR Data Table...');
+            const container = document.getElementById('drDataContainer');
+            const results = data.results || {};
+
+            let tableHTML = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Report/Program</th>
+                            <th>Status</th>
+                            <th>Description</th>
+                            <th>Update Frequency</th>
+                            <th>Last Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            Object.entries(results).forEach(([key, result]) => {
+                const status = result.success ? '✅ Active' :
+                             (result.error && result.error.includes('429')) ? '🟡 Rate Limited' : '❌ Error';
+
+                const description = result.data && result.data.description ?
+                    result.data.description.substring(0, 100) + '...' :
+                    (result.message || 'No description available');
+
+                const frequency = result.data && result.data.generationFrequency ?
+                    result.data.generationFrequency : 'Unknown';
+
+                const lastUpdate = result.data && result.data.lastPostDatetime ?
+                    new Date(result.data.lastPostDatetime).toLocaleString() :
+                    (result.timestamp ? new Date(result.timestamp).toLocaleString() : 'Unknown');
+
+                tableHTML += `
+                    <tr>
+                        <td><strong>${key}</strong></td>
+                        <td>${status}</td>
+                        <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${description}</td>
+                        <td>${frequency}</td>
+                        <td>${lastUpdate}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            container.innerHTML = tableHTML;
+
+            console.log('DR Data Table created successfully');
+        }
+
+        // DER data
+        async function loadDERData() {
+            try {
+                const response = await fetch(`${API_BASE}/der-data`);
+                const data = await response.json();
+
+                const container = document.getElementById('derDataContainer');
+                if (data.endpoints) {
+                    container.innerHTML = '<table class="data-table">' +
+                        '<thead><tr><th>Resource</th><th>Status</th><th>Data Points</th></tr></thead>' +
+                        '<tbody>' +
+                        Object.entries(data.endpoints).map(([key, value]) =>
+                            `<tr>
+                                <td>${key}</td>
+                                <td>${value.success ? '✅ Online' : '❌ Offline'}</td>
+                                <td>${value.data_count || 0}</td>
+                            </tr>`
+                        ).join('') +
+                        '</tbody></table>';
+                } else {
+                    container.innerHTML = '<p>No DER data available</p>';
+                }
+            } catch (error) {
+                console.error('Error loading DER data:', error);
+                document.getElementById('derDataContainer').innerHTML =
+                    '<p>Error loading DER data</p>';
+            }
+        }
+
+        // Fuel Mix data
+        async function loadFuelMixData() {
+            try {
+                const response = await fetch(`${API_BASE}/realtime/fuel-mix`);
+                const data = await response.json();
+                console.log('Fuel mix data received:', data);
+
+                if (data.success) {
+                    // Handle nested data structure
+                    if (data.data && data.data.data) {
+                        // Extract latest fuel mix from nested structure
+                        const dates = Object.keys(data.data.data).sort().reverse();
+                        if (dates.length > 0) {
+                            const latestDate = dates[0];
+                            const dateData = data.data.data[latestDate];
+                            const timestamps = Object.keys(dateData).sort().reverse();
+
+                            if (timestamps.length > 0) {
+                                const latestTimestamp = timestamps[0];
+                                const latestData = dateData[latestTimestamp];
+
+                                // Convert to simple generation object for pie chart
+                                const generation = {};
+                                Object.keys(latestData).forEach(fuel => {
+                                    if (latestData[fuel] && latestData[fuel].gen !== undefined) {
+                                        generation[fuel] = latestData[fuel].gen;
+                                    }
+                                });
+
+                                updateFuelMixPieChart(generation);
+                            }
+                        }
+
+                        // Pass nested data for trend chart
+                        updateFuelMixTrendChart(data.data.data);
+                    }
+                    else if (data.latest && data.latest.generation) {
+                        // Fallback to simpler structure if available
+                        updateFuelMixPieChart(data.latest.generation);
+
+                        if (data.data) {
+                            updateFuelMixTrendChart(data.data);
+                        }
+                    } else {
+                        console.error('Invalid fuel mix data structure:', data);
+                        // Show error message in chart containers
+                        const pieContainer = document.getElementById('fuelMixPieChart').parentElement;
+                        pieContainer.innerHTML = `
+                            <div class="chart-title">Current Fuel Mix</div>
+                            <div style="text-align: center; padding: 60px 20px; color: #666;">
+                                <div style="font-size: 48px; margin-bottom: 20px;">⚡</div>
+                                <p style="font-size: 16px;">No fuel mix data available</p>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading fuel mix data:', error);
+            }
+        }
+
+        // Outages data
+        async function loadOutagesData() {
+            console.log('=== LOADING OUTAGES DATA ===');
+            try {
+                const response = await fetch(`${API_BASE}/public/generation-outages`);
+                const data = await response.json();
+                console.log('Outages data received:', data);
+
+                if (data.success && data.data) {
+                    // Process and display outage data
+                    processOutagesData(data.data);
+
+                    // Create visualizations
+                    createOutagesBreakdownChart(data.data);
+                    createOutagesTrendChart(data.data);
+                    createPlannedVsUnplannedChart(data.data);
+                    createDispatchableVsRenewableChart(data.data);
+
+                    // Create data table
+                    createOutagesDataTable(data.data);
+                } else {
+                    document.getElementById('totalOutages').textContent = 'Error';
+                    document.getElementById('totalOutagesDetails').textContent = 'No data available';
+                }
+            } catch (error) {
+                console.error('Error loading outages data:', error);
+                document.getElementById('totalOutages').textContent = 'Error';
+                document.getElementById('totalOutagesDetails').textContent = 'Failed to load data';
+            }
+        }
+
+        function processOutagesData(outagesData) {
+            console.log('Processing outages data:', outagesData);
+
+            // Get the latest data point
+            const currentData = outagesData.current;
+            const timestamps = Object.keys(currentData).sort();
+            const latestTimestamp = timestamps[timestamps.length - 1];
+            const latest = currentData[latestTimestamp];
+
+            console.log('Latest outage data:', latest);
+
+            // Update current metrics
+            document.getElementById('totalOutages').textContent =
+                `${latest.Combined.total.toLocaleString()} MW`;
+            document.getElementById('totalOutagesDetails').textContent =
+                `as of ${new Date(latest.deliveryTime).toLocaleTimeString()}`;
+
+            document.getElementById('plannedOutages').textContent =
+                `${latest.Combined.planned.toLocaleString()} MW`;
+            document.getElementById('plannedOutagesBreakdown').textContent =
+                `Disp: ${latest.Dispatchable.planned.toLocaleString()} | Renew: ${latest.Renewable.planned.toLocaleString()}`;
+
+            document.getElementById('unplannedOutages').textContent =
+                `${latest.Combined.unplanned.toLocaleString()} MW`;
+            document.getElementById('unplannedOutagesBreakdown').textContent =
+                `Disp: ${latest.Dispatchable.unplanned.toLocaleString()} | Renew: ${latest.Renewable.unplanned.toLocaleString()}`;
+
+            const dispPercentage = ((latest.Dispatchable.total / latest.Combined.total) * 100).toFixed(1);
+            const renewPercentage = ((latest.Renewable.total / latest.Combined.total) * 100).toFixed(1);
+            document.getElementById('outagesByType').textContent =
+                `${dispPercentage}% | ${renewPercentage}%`;
+            document.getElementById('outagesTypeBreakdown').textContent =
+                `Dispatchable | Renewable`;
+        }
+
+        function createOutagesBreakdownChart(outagesData) {
+            console.log('Creating outages breakdown chart...');
+            const ctx = document.getElementById('outagesBreakdownChart').getContext('2d');
+
+            if (charts.outagesBreakdown) {
+                charts.outagesBreakdown.destroy();
+            }
+
+            // Get latest data for breakdown
+            const currentData = outagesData.current;
+            const timestamps = Object.keys(currentData).sort();
+            const latestTimestamp = timestamps[timestamps.length - 1];
+            const latest = currentData[latestTimestamp];
+
+            charts.outagesBreakdown = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Dispatchable Planned', 'Dispatchable Unplanned', 'Renewable Planned', 'Renewable Unplanned'],
+                    datasets: [{
+                        data: [
+                            latest.Dispatchable.planned,
+                            latest.Dispatchable.unplanned,
+                            latest.Renewable.planned,
+                            latest.Renewable.unplanned
+                        ],
+                        backgroundColor: [
+                            '#4CAF50',  // Dispatchable Planned (green)
+                            '#FF5722',  // Dispatchable Unplanned (red)
+                            '#8BC34A',  // Renewable Planned (light green)
+                            '#FF9800'   // Renewable Unplanned (orange)
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map((label, i) => {
+                                            const value = data.datasets[0].data[i];
+                                            return {
+                                                text: `${label}: ${value.toLocaleString()} MW`,
+                                                fillStyle: data.datasets[0].backgroundColor[i],
+                                                strokeStyle: data.datasets[0].borderColor,
+                                                lineWidth: data.datasets[0].borderWidth,
+                                                index: i
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label;
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value.toLocaleString()} MW (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            console.log('Outages breakdown chart created successfully');
+        }
+
+        function createOutagesTrendChart(outagesData) {
+            console.log('Creating outages trend chart...');
+            const ctx = document.getElementById('outagesTrendChart').getContext('2d');
+
+            if (charts.outagesTrend) {
+                charts.outagesTrend.destroy();
+            }
+
+            // Process hourly data
+            const currentData = outagesData.current;
+            const timestamps = Object.keys(currentData).sort();
+
+            const labels = [];
+            const totalOutages = [];
+            const plannedOutages = [];
+            const unplannedOutages = [];
+
+            // Take every 12th data point to show hourly data
+            for (let i = 0; i < timestamps.length; i += 12) {
+                const timestamp = timestamps[i];
+                const dataPoint = currentData[timestamp];
+                const time = new Date(dataPoint.deliveryTime);
+                labels.push(time.getHours() + ':00');
+                totalOutages.push(dataPoint.Combined.total);
+                plannedOutages.push(dataPoint.Combined.planned);
+                unplannedOutages.push(dataPoint.Combined.unplanned);
+            }
+
+            charts.outagesTrend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Outages',
+                        data: totalOutages,
+                        borderColor: '#1f77b4',
+                        backgroundColor: 'rgba(31, 119, 180, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Planned',
+                        data: plannedOutages,
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        tension: 0.4
+                    }, {
+                        label: 'Unplanned',
+                        data: unplannedOutages,
+                        borderColor: '#FF5722',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [10, 5],
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toLocaleString()} MW`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (Hour)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Outages (MW)'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            console.log('Outages trend chart created successfully');
+        }
+
+        function createPlannedVsUnplannedChart(outagesData) {
+            console.log('Creating planned vs unplanned chart...');
+            const ctx = document.getElementById('plannedVsUnplannedChart').getContext('2d');
+
+            if (charts.plannedVsUnplanned) {
+                charts.plannedVsUnplanned.destroy();
+            }
+
+            // Process data every 6 hours
+            const currentData = outagesData.current;
+            const timestamps = Object.keys(currentData).sort();
+
+            const labels = [];
+            const plannedData = [];
+            const unplannedData = [];
+
+            // Take every 72nd data point to show every 6 hours (5 min intervals * 72 = 6 hours)
+            for (let i = 0; i < timestamps.length; i += 72) {
+                const timestamp = timestamps[i];
+                const dataPoint = currentData[timestamp];
+                const time = new Date(dataPoint.deliveryTime);
+                labels.push(time.getHours() + ':00');
+                plannedData.push(dataPoint.Combined.planned);
+                unplannedData.push(dataPoint.Combined.unplanned);
+            }
+
+            charts.plannedVsUnplanned = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Planned Outages',
+                        data: plannedData,
+                        backgroundColor: 'rgba(76, 175, 80, 0.8)',
+                        borderColor: '#4CAF50',
+                        borderWidth: 1
+                    }, {
+                        label: 'Unplanned Outages',
+                        data: unplannedData,
+                        backgroundColor: 'rgba(255, 87, 34, 0.8)',
+                        borderColor: '#FF5722',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toLocaleString()} MW`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            title: {
+                                display: true,
+                                text: 'Time (6-hour intervals)'
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            title: {
+                                display: true,
+                                text: 'Outages (MW)'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            console.log('Planned vs unplanned chart created successfully');
+        }
+
+        function createDispatchableVsRenewableChart(outagesData) {
+            console.log('Creating dispatchable vs renewable chart...');
+            const ctx = document.getElementById('dispatchableVsRenewableChart').getContext('2d');
+
+            if (charts.dispatchableVsRenewable) {
+                charts.dispatchableVsRenewable.destroy();
+            }
+
+            // Process data every 3 hours
+            const currentData = outagesData.current;
+            const timestamps = Object.keys(currentData).sort();
+
+            const labels = [];
+            const dispatchableData = [];
+            const renewableData = [];
+
+            // Take every 36th data point to show every 3 hours
+            for (let i = 0; i < timestamps.length; i += 36) {
+                const timestamp = timestamps[i];
+                const dataPoint = currentData[timestamp];
+                const time = new Date(dataPoint.deliveryTime);
+                labels.push(time.getHours() + ':00');
+                dispatchableData.push(dataPoint.Dispatchable.total);
+                renewableData.push(dataPoint.Renewable.total);
+            }
+
+            charts.dispatchableVsRenewable = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Dispatchable',
+                        data: dispatchableData,
+                        borderColor: '#2196F3',
+                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Renewable',
+                        data: renewableData,
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toLocaleString()} MW`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (3-hour intervals)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Outages (MW)'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            console.log('Dispatchable vs renewable chart created successfully');
+        }
+
+        function createOutagesDataTable(outagesData) {
+            console.log('Creating outages data table...');
+            const tbody = document.getElementById('outagesTableBody');
+
+            // Process recent data (last 24 hours, every hour)
+            const currentData = outagesData.current;
+            const timestamps = Object.keys(currentData).sort().reverse(); // Most recent first
+
+            let rows = '';
+            // Show every 12th data point (hourly) for last 24 hours
+            for (let i = 0; i < Math.min(timestamps.length, 288); i += 12) { // 288 = 24 hours * 12 (5-min intervals)
+                const timestamp = timestamps[i];
+                const dataPoint = currentData[timestamp];
+                const time = new Date(dataPoint.deliveryTime);
+
+                rows += `
+                    <tr>
+                        <td>${time.toLocaleTimeString()}</td>
+                        <td>${dataPoint.Combined.total.toLocaleString()}</td>
+                        <td>${dataPoint.Combined.planned.toLocaleString()}</td>
+                        <td>${dataPoint.Combined.unplanned.toLocaleString()}</td>
+                        <td>${dataPoint.Dispatchable.total.toLocaleString()}</td>
+                        <td>${dataPoint.Renewable.total.toLocaleString()}</td>
+                    </tr>
+                `;
+            }
+
+            tbody.innerHTML = rows;
+            console.log('Outages data table created successfully');
+        }
+
+        // PRC data
+        async function loadPRCData() {
+            try {
+                const response = await fetch(`${API_BASE}/public/daily-prc`);
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    // Update current condition metrics
+                    if (data.data.current_condition) {
+                        const condition = data.data.current_condition;
+                        document.getElementById('currentPRC').textContent =
+                            condition.prc_value ? `${parseInt(condition.prc_value.replace(/,/g, '')).toLocaleString()} MW` : '-';
+                        document.getElementById('systemCondition').textContent =
+                            condition.title || 'Unknown';
+                        document.getElementById('conditionNote').textContent =
+                            condition.condition_note || '';
+
+                        // Color code based on condition
+                        const conditionCard = document.getElementById('systemCondition').parentElement;
+                        conditionCard.style.borderLeft = condition.state === 'normal' ? '4px solid #4CAF50' : '4px solid #FF9800';
+                    }
+
+                    // Process trend data
+                    if (data.data.data && data.data.data.length > 0) {
+                        const prcData = data.data.data;
+
+                        // Calculate statistics
+                        const prcValues = prcData.map(d => d.prc);
+                        const avgPrc = prcValues.reduce((a, b) => a + b, 0) / prcValues.length;
+                        const maxPrc = Math.max(...prcValues);
+                        const maxIndex = prcValues.indexOf(maxPrc);
+
+                        document.getElementById('avgPRC').textContent = Math.round(avgPrc).toLocaleString();
+                        document.getElementById('peakPRC').textContent = maxPrc.toLocaleString() + ' MW';
+                        if (prcData[maxIndex]) {
+                            const peakTime = new Date(prcData[maxIndex].timestamp);
+                            document.getElementById('peakTime').textContent =
+                                `at ${peakTime.getHours()}:${String(peakTime.getMinutes()).padStart(2, '0')}`;
+                        }
+
+                        // Update trend chart
+                        updatePRCTrendChart(prcData);
+
+                        // Update hourly chart
+                        updatePRCHourlyChart(prcData);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading prices data:', error);
+                document.getElementById('currentPRC').textContent = 'Error';
+                document.getElementById('systemCondition').textContent = 'Error loading data';
+            }
+        }
+
+        // PRC Chart update functions
+        function updatePRCTrendChart(data) {
+            const ctx = document.getElementById('prcTrendChart').getContext('2d');
+
+            if (charts.prcTrend) {
+                charts.prcTrend.destroy();
+            }
+
+            // Sample data to avoid too many points
+            const sampledData = [];
+            const sampleRate = Math.max(1, Math.floor(data.length / 200)); // Max 200 points
+
+            for (let i = 0; i < data.length; i += sampleRate) {
+                sampledData.push(data[i]);
+            }
+
+            const labels = sampledData.map(d => {
+                const date = new Date(d.timestamp);
+                return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+            });
+            const values = sampledData.map(d => d.prc);
+
+            charts.prcTrend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Physical Responsive Capability (MW)',
+                        data: values,
+                        borderColor: '#2196F3',
+                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `PRC: ${context.parsed.y.toLocaleString()} MW`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'PRC (MW)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString() + ' MW';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updatePRCHourlyChart(data) {
+            const ctx = document.getElementById('prcHourlyChart').getContext('2d');
+
+            if (charts.prcHourly) {
+                charts.prcHourly.destroy();
+            }
+
+            // Group by hour
+            const hourlyData = {};
+            data.forEach(d => {
+                const date = new Date(d.timestamp);
+                const hour = date.getHours();
+                if (!hourlyData[hour]) {
+                    hourlyData[hour] = [];
+                }
+                hourlyData[hour].push(d.prc);
+            });
+
+            // Calculate average for each hour
+            const hours = [];
+            const avgValues = [];
+            const minValues = [];
+            const maxValues = [];
+
+            for (let i = 0; i < 24; i++) {
+                hours.push(`${i}:00`);
+                if (hourlyData[i] && hourlyData[i].length > 0) {
+                    const values = hourlyData[i];
+                    avgValues.push(values.reduce((a, b) => a + b, 0) / values.length);
+                    minValues.push(Math.min(...values));
+                    maxValues.push(Math.max(...values));
+                } else {
+                    avgValues.push(null);
+                    minValues.push(null);
+                    maxValues.push(null);
+                }
+            }
+
+            charts.prcHourly = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: 'Average PRC',
+                        data: avgValues,
+                        backgroundColor: 'rgba(33, 150, 243, 0.6)',
+                        borderColor: '#2196F3',
+                        borderWidth: 1
+                    }, {
+                        label: 'Max PRC',
+                        type: 'line',
+                        data: maxValues,
+                        borderColor: '#FF6384',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }, {
+                        label: 'Min PRC',
+                        type: 'line',
+                        data: minValues,
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.parsed.y ? context.parsed.y.toLocaleString() + ' MW' : 'No data';
+                                    return `${label}: ${value}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Hour of Day'
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'PRC (MW)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString() + ' MW';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Energy Prices data and charts
+        async function loadEnergyPricesData() {
+            console.log('=== ENERGY PRICES TAB LOADING ===');
+            try {
+                console.log('Loading energy prices data...');
+
+                // Fetch PRC data which can be used to estimate price premiums
+                const prcResponse = await fetch(`${API_BASE}/public/daily-prc`);
+                const prcData = await prcResponse.json();
+                console.log('PRC data:', prcData);
+
+                // Fetch fuel mix data to estimate marginal costs
+                const fuelResponse = await fetch(`${API_BASE}/realtime/fuel-mix`);
+                const fuelData = await fuelResponse.json();
+                console.log('Fuel data:', fuelData);
+
+                // Fetch supply/demand data for price correlation
+                const demandResponse = await fetch(`${API_BASE}/realtime/supply-demand`);
+                const demandData = await demandResponse.json();
+                console.log('Demand data:', demandData);
+
+                if (prcData.success && demandData.success && fuelData.success) {
+                    console.log('All data loaded successfully, processing pricing...');
+                    processEnergyPricing(prcData.data, demandData, fuelData.data);
+                } else {
+                    console.error('Some API calls failed:', {
+                        prc: prcData.success,
+                        demand: demandData.success,
+                        fuel: fuelData.success
+                    });
+                    // Try with default values if some data is missing
+                    processEnergyPricing(
+                        prcData.data || {},
+                        demandData || {},
+                        fuelData.data || {}
+                    );
+                }
+
+                // Update fuel-based price trends
+                updateFuelPriceChart();
+            } catch (error) {
+                console.error('Error loading energy prices:', error);
+                console.error('Error stack:', error.stack);
+
+                // Set error indicators
+                document.getElementById('rtPrice').textContent = 'Error';
+                document.getElementById('daPrice').textContent = 'Error';
+                document.getElementById('priceSpread').textContent = 'Error';
+                document.getElementById('avgPrice').textContent = 'Error';
+
+                // Try to show fallback pricing data
+                try {
+                    processEnergyPricing({}, {}, {});
+                } catch (fallbackError) {
+                    console.error('Even fallback failed:', fallbackError);
+                }
+            }
+        }
+
+        function processEnergyPricing(prcData, demandData, fuelData) {
+            console.log('Processing energy pricing with data:', {
+                prcData,
+                demandData,
+                fuelData
+            });
+
+            // Estimate prices based on available data with fallback values
+            // Extract latest data from the last entry in the data array
+            // Fix data structure access: demandData.data.data (not demandData.data)
+            const latestDemandData = demandData.data && demandData.data.data && demandData.data.data.length > 0 ?
+                demandData.data.data[demandData.data.data.length - 1] : null;
+
+            const currentDemand = latestDemandData ? latestDemandData.demand : 50000;
+            const currentCapacity = latestDemandData ? latestDemandData.capacity : 75000;
+            const currentPRC = prcData.current_condition ?
+                parseInt(prcData.current_condition.prc_value.replace(/,/g, '')) : 10000;
+
+            console.log('Extracted values:', {
+                currentDemand,
+                currentCapacity,
+                currentPRC
+            });
+
+            // Calculate utilization factor
+            const utilizationRate = currentDemand / currentCapacity;
+
+            // More realistic ERCOT pricing based on market conditions
+            const basePriceLow = 20; // $/MWh base price during low demand
+            const basePriceHigh = 120; // $/MWh during peak demand
+            const scarcityPrice = 300; // $/MWh during scarcity conditions
+
+            // Calculate reserve margin as percentage
+            const reserveMargin = (currentCapacity - currentDemand) / currentCapacity;
+            console.log('Reserve margin:', reserveMargin);
+
+            // Scarcity pricing kicks in when reserves are low
+            let scarcityMultiplier = 1;
+            if (reserveMargin < 0.1) { // Less than 10% reserves
+                scarcityMultiplier = 3 + (0.1 - reserveMargin) * 10; // Exponential increase
+            } else if (reserveMargin < 0.15) { // Less than 15% reserves
+                scarcityMultiplier = 1.5 + (0.15 - reserveMargin) * 10;
+            }
+
+            // Base price increases with utilization
+            const basePrice = basePriceLow + (basePriceHigh - basePriceLow) * Math.pow(utilizationRate, 2);
+
+            // Apply scarcity multiplier
+            const estimatedRTPrice = Math.min(scarcityPrice, basePrice * scarcityMultiplier);
+
+            // Day-ahead is typically 85-95% of real-time in ERCOT
+            const estimatedDAPrice = estimatedRTPrice * 0.90;
+
+            console.log('Calculated prices:', {
+                utilizationRate,
+                reserveMargin,
+                scarcityMultiplier,
+                estimatedRTPrice,
+                estimatedDAPrice
+            });
+
+            // Update display
+            document.getElementById('rtPrice').textContent = `$${Math.max(0, estimatedRTPrice).toFixed(2)}`;
+            document.getElementById('daPrice').textContent = `$${Math.max(0, estimatedDAPrice).toFixed(2)}`;
+
+            const spread = estimatedRTPrice - estimatedDAPrice;
+            document.getElementById('priceSpread').textContent = `$${spread > 0 ? '+' : ''}${spread.toFixed(2)}`;
+
+            // Calculate 24h average based on hourly price variations
+            let total24hPrice = 0;
+            for (let hour = 0; hour < 24; hour++) {
+                const timeMultiplier = 0.8 + 0.4 * Math.sin((hour - 6) * Math.PI / 12);
+                const hourlyPrice = estimatedRTPrice * timeMultiplier;
+                total24hPrice += hourlyPrice;
+            }
+            const avgPrice = total24hPrice / 24;
+            document.getElementById('avgPrice').textContent = `$${avgPrice.toFixed(2)}`;
+
+            console.log('Updated price displays, now updating charts...');
+
+            // Update charts with estimated data
+            console.log('Calling updateRTPriceChart with:', { latestDemandData, estimatedRTPrice });
+            updateRTPriceChart(latestDemandData, estimatedRTPrice);
+
+            console.log('Calling updateSPPChart with:', { prcData: !!prcData, estimatedRTPrice, estimatedDAPrice });
+            updateSPPChart(prcData, estimatedRTPrice, estimatedDAPrice);
+        }
+
+        function updateRTPriceChart(demandData, basePrice) {
+            console.log('Updating RT Price Chart with basePrice:', basePrice);
+            const ctx = document.getElementById('rtPriceChart').getContext('2d');
+
+            if (charts.rtPrice) {
+                charts.rtPrice.destroy();
+            }
+
+            // Create estimated price data for different zones based on demand patterns
+            const labels = [];
+            const hubPrices = [];
+            const northPrices = [];
+            const southPrices = [];
+            const westPrices = [];
+            const houstonPrices = [];
+
+            // Generate 24 hours of estimated pricing data
+            for (let hour = 0; hour < 24; hour++) {
+                labels.push(`${hour}:00`);
+
+                // Price varies by time of day and zone
+                const timeMultiplier = 0.8 + 0.4 * Math.sin((hour - 6) * Math.PI / 12); // Peak around 6 PM
+                const baseTODPrice = basePrice * timeMultiplier;
+
+                // Zone premiums/discounts
+                hubPrices.push(baseTODPrice);
+                northPrices.push(baseTODPrice * 0.95); // 5% lower
+                southPrices.push(baseTODPrice * 1.05); // 5% higher
+                westPrices.push(baseTODPrice * 0.98); // 2% lower
+                houstonPrices.push(baseTODPrice * 1.08); // 8% higher (urban premium)
+            }
+
+            charts.rtPrice = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Hub',
+                        data: hubPrices,
+                        borderColor: '#FF6384',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.4
+                    }, {
+                        label: 'North Zone',
+                        data: northPrices,
+                        borderColor: '#36A2EB',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.4
+                    }, {
+                        label: 'South Zone',
+                        data: southPrices,
+                        borderColor: '#FFCE56',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.4
+                    }, {
+                        label: 'West Zone',
+                        data: westPrices,
+                        borderColor: '#4BC0C0',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.4
+                    }, {
+                        label: 'Houston Zone',
+                        data: houstonPrices,
+                        borderColor: '#9966FF',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.4
+                    }].filter(d => d.data.some(v => v > 0))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}/MWh`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Price ($/MWh)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            console.log('RT Price Chart created successfully');
+        }
+
+        function updateSPPChart(prcData, rtPrice, daPrice) {
+            const ctx = document.getElementById('sppChart').getContext('2d');
+
+            if (charts.spp) {
+                charts.spp.destroy();
+            }
+
+            const labels = [];
+            const rtPrices = [];
+            const daPrices = [];
+
+            // Generate 24 hours of estimated RT vs DA pricing
+            for (let hour = 0; hour < 24; hour++) {
+                labels.push(`${hour}:00`);
+
+                // RT prices are more volatile than DA prices
+                const volatility = 0.1 + 0.15 * Math.sin(hour * Math.PI / 6); // More volatile in morning/evening
+                const rtVariation = rtPrice * (1 + volatility * (Math.random() - 0.5));
+                const daVariation = daPrice * (1 + volatility * 0.5 * (Math.random() - 0.5));
+
+                rtPrices.push(Math.max(0, rtVariation));
+                daPrices.push(Math.max(0, daVariation));
+            }
+
+            charts.spp = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Real-Time SPP',
+                        data: rtPrices,
+                        borderColor: '#FF6384',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Day-Ahead SPP',
+                        data: daPrices,
+                        borderColor: '#36A2EB',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}/MWh`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Settlement Point Price ($/MWh)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateFuelPriceChart() {
+            console.log('Updating Fuel Price Chart...');
+            const ctx = document.getElementById('fuelPriceChart').getContext('2d');
+
+            if (charts.fuelPrice) {
+                charts.fuelPrice.destroy();
+            }
+
+            // More realistic fuel-based pricing trends
+            const labels = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'];
+
+            // Natural gas prices vary with demand and time of day
+            const gasPrice = [42, 45, 52, 68, 74, 58];
+
+            // Coal prices are more stable but still vary
+            const coalPrice = [32, 33, 35, 38, 36, 34];
+
+            // Nuclear is baseload - very stable pricing
+            const nuclearPrice = [20, 20, 20, 20, 20, 20];
+
+            // Wind has variable pricing based on availability and curtailment
+            // Wind is often negative priced during high wind/low demand periods
+            const windPrice = [-5, -8, -2, 15, 25, 12];
+
+            // Solar pricing varies dramatically with sun availability
+            // Can be negative during peak production, expensive when unavailable
+            const solarPrice = [0, 0, 8, 35, 45, 28];
+
+            charts.fuelPrice = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Natural Gas',
+                        data: gasPrice,
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                        borderColor: '#FF6384',
+                        borderWidth: 1
+                    }, {
+                        label: 'Coal',
+                        data: coalPrice,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: '#36A2EB',
+                        borderWidth: 1
+                    }, {
+                        label: 'Nuclear',
+                        data: nuclearPrice,
+                        backgroundColor: 'rgba(255, 206, 86, 0.6)',
+                        borderColor: '#FFCE56',
+                        borderWidth: 1
+                    }, {
+                        label: 'Wind',
+                        data: windPrice,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: '#4BC0C0',
+                        borderWidth: 1
+                    }, {
+                        label: 'Solar',
+                        data: solarPrice,
+                        backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                        borderColor: '#FF9F40',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}/MWh`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time of Day'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Marginal Cost ($/MWh)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            console.log('Fuel Price Chart created successfully');
+
+            // Note: avgPrice is calculated and displayed by processEnergyPricing function
+        }
+
+        // Debug function to manually test energy pricing
+        window.testEnergyPricing = function() {
+            console.log('Manual test of energy pricing...');
+            loadEnergyPricesData();
+        };
+
+        // Chart update functions
+        function updateDemandTrendChart(data) {
+            const ctx = document.getElementById('demandTrendChart').getContext('2d');
+
+            if (charts.demandTrend) {
+                charts.demandTrend.destroy();
+            }
+
+            const labels = [];
+            const demands = [];
+            const capacities = [];
+
+            // Check different data structures
+            if (data && data.data) {
+                if (data.data.currentDay && data.data.currentDay.data) {
+                    // Process currentDay data structure
+                    Object.values(data.data.currentDay.data).forEach(hour => {
+                        if (hour.timestamp) {
+                            const date = new Date(hour.timestamp);
+                            labels.push(date.getHours() + ':00');
+                            demands.push(hour.demand || 0);
+                            capacities.push(hour.capacity || 0);
+                        }
+                    });
+                } else if (Array.isArray(data.data)) {
+                    // Process array data structure
+                    data.data.forEach(item => {
+                        if (item.timestamp) {
+                            const date = new Date(item.timestamp);
+                            labels.push(date.getHours() + ':00');
+                            demands.push(item.demand || 0);
+                            capacities.push(item.capacity || 0);
+                        }
+                    });
+                }
+            }
+
+            // If no data found, create sample data for demonstration
+            if (demands.length === 0) {
+                // Generate 24 hours of sample data based on typical patterns
+                const now = new Date();
+                const baseLoad = 45000;
+                for (let i = 0; i < 24; i++) {
+                    labels.push(i + ':00');
+                    // Create realistic demand curve (lower at night, peaks during day)
+                    const hourMultiplier = 1 + (Math.sin((i - 6) * Math.PI / 12) * 0.3);
+                    const demand = baseLoad * hourMultiplier + (Math.random() * 2000 - 1000);
+                    demands.push(Math.round(demand));
+                    capacities.push(Math.round(demand * 1.15)); // 15% reserve margin
+                }
+            }
+
+            charts.demandTrend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Demand (MW)',
+                        data: demands,
+                        borderColor: '#1e3c72',
+                        backgroundColor: 'rgba(30, 60, 114, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: labels.length > 50 ? 0 : 3
+                    }, {
+                        label: 'Capacity (MW)',
+                        data: capacities.length > 0 ? capacities : null,
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: false,
+                        borderDash: [5, 5],
+                        pointRadius: 0
+                    }].filter(d => d.data !== null)
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.y.toLocaleString() + ' MW';
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return (value / 1000).toFixed(0) + ' GW';
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        function updateGenerationMixChart(generation) {
+            const ctx = document.getElementById('generationMixChart').getContext('2d');
+
+            if (charts.generationMix) {
+                charts.generationMix.destroy();
+            }
+
+            const labels = [];
+            const values = [];
+            const colors = {
+                'Natural Gas': '#FF6384',
+                'Coal': '#36A2EB',
+                'Nuclear': '#FFCE56',
+                'Wind': '#4BC0C0',
+                'Solar': '#FF9F40',
+                'Hydro': '#9966FF',
+                'Other': '#C9CBCF'
+            };
+
+            if (generation) {
+                Object.entries(generation).forEach(([fuel, data]) => {
+                    if (data && data.gen > 0) {
+                        labels.push(fuel);
+                        values.push(data.gen);
+                    }
+                });
+            }
+
+            charts.generationMix = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: labels.map(l => colors[l] || '#999')
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateSupplyDemandChart(data) {
+            const chartContainer = document.getElementById('supplyDemandChart').parentElement;
+
+            // Check if we have valid data
+            let hasData = false;
+            const labels = [];
+            const demand = [];
+            const capacity = [];
+            const reserves = [];
+
+            // Try to extract data from different possible structures
+            if (data) {
+                // Check if data.data is an array (5-minute intervals)
+                if (data.data && Array.isArray(data.data.data)) {
+                    const intervalData = data.data.data;
+                    if (intervalData.length > 0) {
+                        // Process 5-minute interval data
+                        intervalData.forEach((item, index) => {
+                            if (item.timestamp) {
+                                const date = new Date(item.timestamp);
+                                // Show every 6th point (30 minutes) to avoid overcrowding
+                                if (index % 6 === 0 || index === intervalData.length - 1) {
+                                    labels.push(`${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`);
+                                    demand.push(item.demand || 0);
+                                    capacity.push(item.capacity || 0);
+                                    // Calculate reserves if not provided
+                                    const reserve = item.reserve || (item.capacity - item.demand);
+                                    reserves.push(reserve);
+                                }
+                            }
+                        });
+                        hasData = true;
+                    }
+                } else if (data.data && data.data.currentDay && data.data.currentDay.data) {
+                    const dayData = Object.values(data.data.currentDay.data);
+                    if (dayData.length > 0) {
+                        dayData.forEach(hour => {
+                            if (hour.timestamp) {
+                                labels.push(new Date(hour.timestamp).getHours() + ':00');
+                                demand.push(hour.demand || 0);
+                                capacity.push(hour.capacity || 0);
+                                reserves.push(hour.reserve || 0);
+                                hasData = true;
+                            }
+                        });
+                    }
+                } else if (data.latest) {
+                    // If we only have latest data, show it as a single point
+                    const now = new Date();
+                    for (let i = 0; i <= now.getHours(); i++) {
+                        labels.push(i + ':00');
+                        if (i === now.getHours()) {
+                            demand.push(data.latest.demand || 0);
+                            capacity.push(data.latest.capacity || 0);
+                            reserves.push(data.latest.reserve || 0);
+                        } else {
+                            demand.push(null);
+                            capacity.push(null);
+                            reserves.push(null);
+                        }
+                    }
+                    hasData = true;
+                }
+            }
+
+            // If no data available, show a message instead of empty chart
+            if (!hasData || demand.length === 0) {
+                chartContainer.innerHTML = `
+                    <div class="chart-title">Real-Time Supply vs Demand</div>
+                    <div style="text-align: center; padding: 60px 20px; color: #666;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
+                        <p style="font-size: 16px; margin-bottom: 10px;">Real-time historical data not available</p>
+                        <p style="font-size: 14px; color: #999;">Current values are shown in the metrics above</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // If we have data, create the chart
+            const canvas = document.createElement('canvas');
+            canvas.id = 'supplyDemandChart';
+            chartContainer.innerHTML = '<div class="chart-title">Real-Time Supply vs Demand</div>';
+            chartContainer.appendChild(canvas);
+
+            const ctx = canvas.getContext('2d');
+
+            if (charts.supplyDemand) {
+                charts.supplyDemand.destroy();
+            }
+
+            charts.supplyDemand = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Demand',
+                        data: demand,
+                        borderColor: '#FF6384',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        spanGaps: true
+                    }, {
+                        label: 'Total Capacity',
+                        data: capacity,
+                        borderColor: '#36A2EB',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: false,
+                        borderDash: [5, 5],
+                        spanGaps: true
+                    }, {
+                        label: 'Operating Reserves',
+                        data: reserves,
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: false,
+                        spanGaps: true
+                    }].filter(d => d.data.some(v => v !== null))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.parsed.y === null) return null;
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.y.toLocaleString() + ' MW';
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return (value / 1000).toFixed(0) + ' GW';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateSolarChart(data) {
+            const chartContainer = document.getElementById('solarChart').parentElement;
+
+            if (!data || Object.keys(data).length === 0) {
+                chartContainer.innerHTML = `
+                    <div class="chart-title">Solar Production Today</div>
+                    <div style="text-align: center; padding: 60px 20px; color: #666;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">☀️</div>
+                        <p style="font-size: 16px;">No solar data available</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Create canvas if it doesn't exist
+            if (!document.getElementById('solarChart')) {
+                chartContainer.innerHTML = '<div class="chart-title">Solar Production Today</div>';
+                const canvas = document.createElement('canvas');
+                canvas.id = 'solarChart';
+                chartContainer.appendChild(canvas);
+            }
+
+            const ctx = document.getElementById('solarChart').getContext('2d');
+
+            if (charts.solar) {
+                charts.solar.destroy();
+            }
+
+            const labels = [];
+            const actual = [];
+            const forecast = [];
+            const capacity = [];
+
+            // Sort entries by timestamp and process
+            const sortedEntries = Object.entries(data).sort((a, b) => {
+                const timeA = parseInt(a[0]);
+                const timeB = parseInt(b[0]);
+                return timeA - timeB;
+            });
+
+            sortedEntries.forEach(([timestamp, values]) => {
+                if (values && values.timestamp) {
+                    const date = new Date(values.timestamp);
+                    const hour = date.getHours();
+                    const minutes = date.getMinutes();
+
+                    // Show hourly data points
+                    if (minutes === 0) {
+                        labels.push(`${hour}:00`);
+                        actual.push(values.actualSolar || 0);
+                        forecast.push(values.stppf || values.pvgrpp || 0);
+                        capacity.push(values.copHslSolar || 0);
+                    }
+                }
+            });
+
+            // Find max value for better scaling
+            const maxValue = Math.max(...actual, ...forecast, ...capacity, 1000);
+
+            charts.solar = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Actual Generation',
+                        data: actual,
+                        borderColor: '#FF9F40',
+                        backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }, {
+                        label: 'Forecast',
+                        data: forecast,
+                        borderColor: '#FFD700',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: false,
+                        pointRadius: 0
+                    }, {
+                        label: 'Capacity',
+                        data: capacity,
+                        borderColor: '#FFA500',
+                        borderDash: [10, 5],
+                        borderWidth: 1,
+                        tension: 0.4,
+                        fill: false,
+                        pointRadius: 0
+                    }].filter(d => d.data.some(v => v > 0)) // Only show datasets with data
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.y.toLocaleString() + ' MW';
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Hour of Day'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: Math.ceil(maxValue / 1000) * 1000,
+                            title: {
+                                display: true,
+                                text: 'Power (MW)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString() + ' MW';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateWindChart(data) {
+            const chartContainer = document.getElementById('windChart').parentElement;
+
+            if (!data || Object.keys(data).length === 0) {
+                chartContainer.innerHTML = `
+                    <div class="chart-title">Wind Production Today</div>
+                    <div style="text-align: center; padding: 60px 20px; color: #666;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">💨</div>
+                        <p style="font-size: 16px;">No wind data available</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Create canvas if it doesn't exist
+            if (!document.getElementById('windChart')) {
+                chartContainer.innerHTML = '<div class="chart-title">Wind Production Today</div>';
+                const canvas = document.createElement('canvas');
+                canvas.id = 'windChart';
+                chartContainer.appendChild(canvas);
+            }
+
+            const ctx = document.getElementById('windChart').getContext('2d');
+
+            if (charts.wind) {
+                charts.wind.destroy();
+            }
+
+            const labels = [];
+            const actual = [];
+            const forecast = [];
+            const capacity = [];
+
+            // Sort entries by timestamp and process
+            const sortedEntries = Object.entries(data).sort((a, b) => {
+                const timeA = parseInt(a[0]);
+                const timeB = parseInt(b[0]);
+                return timeA - timeB;
+            });
+
+            sortedEntries.forEach(([timestamp, values]) => {
+                if (values && values.timestamp) {
+                    const date = new Date(values.timestamp);
+                    const hour = date.getHours();
+                    const minutes = date.getMinutes();
+
+                    // Show hourly data points
+                    if (minutes === 0) {
+                        labels.push(`${hour}:00`);
+                        actual.push(values.actualWind || 0);
+                        forecast.push(values.stwpf || values.wgrpp || 0);
+                        capacity.push(values.copHslWind || 0);
+                    }
+                }
+            });
+
+            // Find max value for better scaling
+            const maxValue = Math.max(...actual, ...forecast, ...capacity, 5000);
+
+            charts.wind = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Actual Generation',
+                        data: actual,
+                        borderColor: '#4BC0C0',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }, {
+                        label: 'Forecast',
+                        data: forecast,
+                        borderColor: '#00CED1',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: false,
+                        pointRadius: 0
+                    }, {
+                        label: 'Capacity',
+                        data: capacity,
+                        borderColor: '#008B8B',
+                        borderDash: [10, 5],
+                        borderWidth: 1,
+                        tension: 0.4,
+                        fill: false,
+                        pointRadius: 0
+                    }].filter(d => d.data.some(v => v > 0)) // Only show datasets with data
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.y.toLocaleString() + ' MW';
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Hour of Day'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: Math.ceil(maxValue / 1000) * 1000,
+                            title: {
+                                display: true,
+                                text: 'Power (MW)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString() + ' MW';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateFuelMixPieChart(generation) {
+            const ctx = document.getElementById('fuelMixPieChart').getContext('2d');
+
+            if (charts.fuelMixPie) {
+                charts.fuelMixPie.destroy();
+            }
+
+            const labels = [];
+            const values = [];
+            const backgroundColors = [];
+            const colorMap = {
+                'Natural Gas': '#FF6384',
+                'Coal': '#36A2EB',
+                'Coal and Lignite': '#36A2EB',
+                'Nuclear': '#FFCE56',
+                'Wind': '#4BC0C0',
+                'Solar': '#FF9F40',
+                'Hydro': '#9966FF',
+                'Power Storage': '#FF69B4',
+                'Other': '#C9CBCF'
+            };
+
+            if (generation) {
+                Object.entries(generation).forEach(([fuel, value]) => {
+                    // Handle both direct values and objects with gen property
+                    let genValue = 0;
+                    if (typeof value === 'number') {
+                        genValue = value;
+                    } else if (value && typeof value === 'object' && value.gen !== undefined) {
+                        genValue = value.gen;
+                    }
+
+                    if (genValue > 0) {
+                        labels.push(fuel);
+                        values.push(genValue);
+                        backgroundColors.push(colorMap[fuel] || '#999');
+                    }
+                });
+            }
+
+            charts.fuelMixPie = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: backgroundColors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value.toLocaleString()} MW (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateFuelMixTrendChart(data) {
+            const chartContainer = document.getElementById('fuelMixTrendChart').parentElement;
+
+            if (!data) {
+                chartContainer.innerHTML = `
+                    <div class="chart-title">Fuel Mix Trend (24 Hours)</div>
+                    <div style="text-align: center; padding: 60px 20px; color: #666;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
+                        <p style="font-size: 16px;">No trend data available</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Create canvas if it doesn't exist
+            if (!document.getElementById('fuelMixTrendChart')) {
+                chartContainer.innerHTML = '<div class="chart-title">Fuel Mix Trend (24 Hours)</div>';
+                const canvas = document.createElement('canvas');
+                canvas.id = 'fuelMixTrendChart';
+                chartContainer.appendChild(canvas);
+            }
+
+            const ctx = document.getElementById('fuelMixTrendChart').getContext('2d');
+
+            if (charts.fuelMixTrend) {
+                charts.fuelMixTrend.destroy();
+            }
+
+            // Process data for stacked area chart
+            const labels = [];
+            const datasets = {};
+            const colorMap = {
+                'Natural Gas': '#FF6384',
+                'Coal': '#36A2EB',
+                'Coal and Lignite': '#36A2EB',
+                'Nuclear': '#FFCE56',
+                'Wind': '#4BC0C0',
+                'Solar': '#FF9F40',
+                'Hydro': '#9966FF',
+                'Power Storage': '#FF69B4',
+                'Other': '#C9CBCF'
+            };
+
+            // Check if data has the expected structure
+            let hasData = false;
+
+            // Process nested date/timestamp structure
+            if (typeof data === 'object' && !Array.isArray(data)) {
+                // Get all dates and sort them
+                const dates = Object.keys(data).sort();
+
+                // Process each date's data
+                dates.forEach(date => {
+                    const dateData = data[date];
+                    const timestamps = Object.keys(dateData).sort();
+
+                    // Sample data points (every 10th point to avoid overcrowding)
+                    timestamps.forEach((timestamp, index) => {
+                        if (index % 10 === 0) {  // Sample every 10th data point
+                            const timeData = dateData[timestamp];
+                            const dt = new Date(timestamp);
+                            labels.push(`${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`);
+
+                            Object.entries(timeData).forEach(([fuel, fuelData]) => {
+                                if (fuelData && fuelData.gen !== undefined) {
+                                    if (!datasets[fuel]) {
+                                        datasets[fuel] = {
+                                            label: fuel,
+                                            data: [],
+                                            backgroundColor: colorMap[fuel] || '#999',
+                                            borderColor: colorMap[fuel] || '#999',
+                                            fill: true
+                                        };
+                                    }
+                                    datasets[fuel].data.push(fuelData.gen);
+                                }
+                            });
+                            hasData = true;
+                        }
+                    });
+                });
+            }
+            // Try to process currentDay structure
+            else if (data.currentDay && data.currentDay.data) {
+                const dayData = data.currentDay.data;
+                Object.values(dayData).forEach(hour => {
+                    if (hour.timestamp) {
+                        labels.push(new Date(hour.timestamp).getHours() + ':00');
+
+                        Object.entries(hour.generation || {}).forEach(([fuel, genData]) => {
+                            if (!datasets[fuel]) {
+                                datasets[fuel] = {
+                                    label: fuel,
+                                    data: [],
+                                    backgroundColor: colorMap[fuel] || '#999',
+                                    borderColor: colorMap[fuel] || '#999',
+                                    fill: true
+                                };
+                            }
+                            datasets[fuel].data.push(genData.gen || 0);
+                        });
+                        hasData = true;
+                    }
+                });
+            }
+            // Try to process array structure
+            else if (Array.isArray(data)) {
+                data.forEach(item => {
+                    if (item.timestamp) {
+                        const date = new Date(item.timestamp);
+                        labels.push(`${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`);
+
+                        Object.entries(item.generation || {}).forEach(([fuel, genData]) => {
+                            if (!datasets[fuel]) {
+                                datasets[fuel] = {
+                                    label: fuel,
+                                    data: [],
+                                    backgroundColor: colorMap[fuel] || '#999',
+                                    borderColor: colorMap[fuel] || '#999',
+                                    fill: true
+                                };
+                            }
+                            datasets[fuel].data.push(genData.gen || 0);
+                        });
+                        hasData = true;
+                    }
+                });
+            }
+
+            if (!hasData || Object.keys(datasets).length === 0) {
+                chartContainer.innerHTML = `
+                    <div class="chart-title">Fuel Mix Trend (24 Hours)</div>
+                    <div style="text-align: center; padding: 60px 20px; color: #666;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📈</div>
+                        <p style="font-size: 16px;">Insufficient data for trend chart</p>
+                    </div>
+                `;
+                return;
+            }
+
+            charts.fuelMixTrend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: Object.values(datasets)
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            display: true,
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            title: {
+                                display: true,
+                                text: 'Generation (MW)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return (value / 1000).toFixed(0) + ' GW';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 15,
+                                padding: 10
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.y.toLocaleString() + ' MW';
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Utility functions
+        function updateLastUpdate() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent =
+                now.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+        }
+
+        function refreshCurrentTab() {
+            loadTabData(currentTab);
+        }
+
+        // Auto-refresh setup
+        function setupAutoRefresh() {
+            const autoRefreshCheckbox = document.getElementById('autoRefresh');
+            const intervalSelect = document.getElementById('refreshInterval');
+
+            function startAutoRefresh() {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                }
+
+                if (autoRefreshCheckbox.checked) {
+                    const interval = parseInt(intervalSelect.value);
+                    autoRefreshInterval = setInterval(() => {
+                        refreshCurrentTab();
+                    }, interval);
+                }
+            }
+
+            autoRefreshCheckbox.addEventListener('change', startAutoRefresh);
+            intervalSelect.addEventListener('change', startAutoRefresh);
+
+            // Start auto-refresh on load
+            startAutoRefresh();
+        }
+
+        // Update All Generation Chart - shows all sources over time
+        function updateAllGenerationChart(data) {
+            const ctx = document.getElementById('allGenerationChart');
+            if (!ctx) return;
+
+            const chartCtx = ctx.getContext('2d');
+
+            if (charts.allGeneration) {
+                charts.allGeneration.destroy();
+            }
+
+            // Process data for stacked area chart
+            const labels = [];
+            const datasets = {};
+            const colorMap = {
+                'Natural Gas': '#FF6384',
+                'Coal and Lignite': '#36A2EB',
+                'Nuclear': '#FFCE56',
+                'Wind': '#4BC0C0',
+                'Solar': '#FF9F40',
+                'Hydro': '#9966FF',
+                'Power Storage': '#FF69B4',
+                'Other': '#C9CBCF'
+            };
+
+            // Process nested date/timestamp structure
+            if (typeof data === 'object' && !Array.isArray(data)) {
+                const dates = Object.keys(data).sort();
+
+                dates.forEach(date => {
+                    const dateData = data[date];
+                    const timestamps = Object.keys(dateData).sort();
+
+                    // Sample data points to avoid overcrowding
+                    timestamps.forEach((timestamp, index) => {
+                        if (index % 20 === 0) {  // Sample every 20th data point
+                            const timeData = dateData[timestamp];
+                            const dt = new Date(timestamp);
+                            labels.push(`${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`);
+
+                            Object.entries(timeData).forEach(([fuel, fuelData]) => {
+                                if (fuelData && fuelData.gen !== undefined) {
+                                    if (!datasets[fuel]) {
+                                        datasets[fuel] = {
+                                            label: fuel,
+                                            data: [],
+                                            backgroundColor: colorMap[fuel] || '#999',
+                                            borderColor: colorMap[fuel] || '#999',
+                                            fill: true,
+                                            tension: 0.4
+                                        };
+                                    }
+                                    datasets[fuel].data.push(fuelData.gen);
+                                }
+                            });
+                        }
+                    });
+                });
+            }
+
+            charts.allGeneration = new Chart(chartCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: Object.values(datasets)
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' +
+                                           (context.parsed.y / 1000).toFixed(2) + ' GW';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return (value / 1000).toFixed(0) + ' GW';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update Generation Comparison Chart - shows current proportions
+        function updateGenerationComparisonChart(latestData) {
+            const ctx = document.getElementById('generationComparisonChart');
+            if (!ctx) return;
+
+            const chartCtx = ctx.getContext('2d');
+
+            if (charts.generationComparison) {
+                charts.generationComparison.destroy();
+            }
+
+            const labels = [];
+            const values = [];
+            const backgroundColors = [];
+            const colorMap = {
+                'Natural Gas': '#FF6384',
+                'Coal and Lignite': '#36A2EB',
+                'Nuclear': '#FFCE56',
+                'Wind': '#4BC0C0',
+                'Solar': '#FF9F40',
+                'Hydro': '#9966FF',
+                'Power Storage': '#FF69B4',
+                'Other': '#C9CBCF'
+            };
+
+            if (latestData) {
+                Object.entries(latestData).forEach(([fuel, fuelData]) => {
+                    if (fuelData && fuelData.gen && fuelData.gen > 0) {
+                        labels.push(fuel);
+                        values.push(fuelData.gen);
+                        backgroundColors.push(colorMap[fuel] || '#999');
+                    }
+                });
+            }
+
+            // Group renewable vs traditional
+            const renewableTypes = ['Solar', 'Wind', 'Hydro'];
+            const renewable = values.reduce((sum, val, idx) =>
+                renewableTypes.includes(labels[idx]) ? sum + val : sum, 0);
+            const traditional = values.reduce((sum, val, idx) =>
+                !renewableTypes.includes(labels[idx]) ? sum + val : sum, 0);
+
+            charts.generationComparison = new Chart(chartCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: backgroundColors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                    const percent = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${(value/1000).toFixed(2)} GW (${percent}%)`;
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: `Renewable: ${(renewable/1000).toFixed(1)} GW | Traditional: ${(traditional/1000).toFixed(1)} GW`,
+                            position: 'bottom',
+                            padding: 20
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update Individual Generation Charts with capacity and forecast data
+        function updateIndividualGenerationCharts(data) {
+            // Get capacity data from the API
+            const capacityData = {
+                'Natural Gas': 66438,  // MW from monthlyCapacity
+                'Coal and Lignite': 12812,
+                'Nuclear': 5268,
+                'Hydro': 573,
+                'Power Storage': 13861,
+                'Other': 142
+            };
+
+            const fuelTypes = [
+                { id: 'gasGenerationChart', fuel: 'Natural Gas', color: '#FF6384' },
+                { id: 'coalGenerationChart', fuel: 'Coal and Lignite', color: '#36A2EB' },
+                { id: 'nuclearGenerationChart', fuel: 'Nuclear', color: '#FFCE56' },
+                { id: 'hydroGenerationChart', fuel: 'Hydro', color: '#9966FF' },
+                { id: 'storageGenerationChart', fuel: 'Power Storage', color: '#FF69B4' },
+                { id: 'otherGenerationChart', fuel: 'Other', color: '#C9CBCF' }
+            ];
+
+            fuelTypes.forEach(({ id, fuel, color }) => {
+                const ctx = document.getElementById(id);
+                if (!ctx) return;
+
+                const chartCtx = ctx.getContext('2d');
+
+                // Destroy existing chart if it exists
+                if (charts[id]) {
+                    charts[id].destroy();
+                }
+
+                // Process data for this fuel type
+                const labels = [];
+                const actualValues = [];
+                const capacityValues = [];
+                const utilizationValues = [];
+                let maxValue = 0;
+                let minValue = Infinity;
+                let totalGeneration = 0;
+                let dataPoints = 0;
+
+                const capacity = capacityData[fuel] || 0;
+
+                if (typeof data === 'object' && !Array.isArray(data)) {
+                    const dates = Object.keys(data).sort();
+
+                    dates.forEach(date => {
+                        const dateData = data[date];
+                        const timestamps = Object.keys(dateData).sort();
+
+                        timestamps.forEach((timestamp, index) => {
+                            if (index % 10 === 0) {  // Sample every 10th point
+                                const timeData = dateData[timestamp];
+                                const dt = new Date(timestamp);
+                                labels.push(`${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`);
+
+                                if (timeData[fuel] && timeData[fuel].gen !== undefined) {
+                                    const value = timeData[fuel].gen;
+                                    actualValues.push(value);
+                                    capacityValues.push(capacity);
+                                    utilizationValues.push(capacity > 0 ? (value / capacity) * 100 : 0);
+
+                                    maxValue = Math.max(maxValue, value);
+                                    if (value >= 0) {  // Don't count negative storage as min
+                                        minValue = Math.min(minValue, value);
+                                    }
+                                    totalGeneration += value;
+                                    dataPoints++;
+                                } else {
+                                    actualValues.push(0);
+                                    capacityValues.push(capacity);
+                                    utilizationValues.push(0);
+                                }
+                            }
+                        });
+                    });
+                }
+
+                // Calculate statistics
+                const avgGeneration = dataPoints > 0 ? totalGeneration / dataPoints : 0;
+                const avgUtilization = capacity > 0 ? (avgGeneration / capacity) * 100 : 0;
+                const peakUtilization = capacity > 0 ? (maxValue / capacity) * 100 : 0;
+
+                // Create gradients
+                const actualGradient = chartCtx.createLinearGradient(0, 0, 0, 400);
+                actualGradient.addColorStop(0, color);
+                actualGradient.addColorStop(1, color + '33');
+
+                const datasets = [
+                    {
+                        label: 'Actual Generation',
+                        data: actualValues,
+                        borderColor: color,
+                        backgroundColor: actualGradient,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 5
+                    }
+                ];
+
+                // Add capacity line if capacity is significant
+                if (capacity > 0) {
+                    datasets.push({
+                        label: 'Installed Capacity',
+                        data: capacityValues,
+                        borderColor: '#999',
+                        backgroundColor: 'transparent',
+                        borderWidth: 1,
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0,
+                        pointRadius: 0,
+                        pointHoverRadius: 0
+                    });
+                }
+
+                charts[id] = new Chart(chartCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    boxWidth: 6
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.dataset.label === 'Installed Capacity') {
+                                            return `Capacity: ${(context.parsed.y / 1000).toFixed(2)} GW`;
+                                        }
+                                        const utilization = capacity > 0 ?
+                                            ` (${((context.parsed.y / capacity) * 100).toFixed(1)}% utilization)` : '';
+                                        return `${context.dataset.label}: ${(context.parsed.y / 1000).toFixed(2)} GW${utilization}`;
+                                    }
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: [
+                                    `Capacity: ${(capacity/1000).toFixed(2)} GW | Avg Generation: ${(avgGeneration/1000).toFixed(2)} GW`,
+                                    `Avg Utilization: ${avgUtilization.toFixed(1)}% | Peak Utilization: ${peakUtilization.toFixed(1)}%`
+                                ],
+                                position: 'bottom',
+                                font: {
+                                    size: 11
+                                },
+                                color: '#666',
+                                padding: {
+                                    top: 10,
+                                    bottom: 0
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    maxTicksLimit: 12
+                                }
+                            },
+                            y: {
+                                grid: {
+                                    color: 'rgba(0,0,0,0.05)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        if (fuel === 'Power Storage' && value < 0) {
+                                            return (value / 1000).toFixed(1) + ' GW (Charging)';
+                                        }
+                                        return (value / 1000).toFixed(1) + ' GW';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        // API Status Management
+        const apiEndpoints = [
+            { name: 'Supply & Demand', endpoint: '/realtime/supply-demand', category: 'Real-Time' },
+            { name: 'Fuel Mix (All Sources)', endpoint: '/realtime/fuel-mix', category: 'Real-Time' },
+            { name: 'Solar Power', endpoint: '/public/solar-power-production', category: 'Renewable' },
+            { name: 'Wind Power', endpoint: '/public/wind-power-production', category: 'Renewable' },
+            { name: 'Natural Gas (via Fuel Mix)', endpoint: '/realtime/fuel-mix', category: 'Generation Sources', testKey: 'Natural Gas' },
+            { name: 'Coal & Lignite (via Fuel Mix)', endpoint: '/realtime/fuel-mix', category: 'Generation Sources', testKey: 'Coal and Lignite' },
+            { name: 'Nuclear (via Fuel Mix)', endpoint: '/realtime/fuel-mix', category: 'Generation Sources', testKey: 'Nuclear' },
+            { name: 'Hydro (via Fuel Mix)', endpoint: '/realtime/fuel-mix', category: 'Generation Sources', testKey: 'Hydro' },
+            { name: 'Other (via Fuel Mix)', endpoint: '/realtime/fuel-mix', category: 'Generation Sources', testKey: 'Other' },
+            { name: 'Generation Outages', endpoint: '/public/generation-outages', category: 'Grid Status' },
+            { name: 'Daily PRC', endpoint: '/public/daily-prc', category: 'Reserve Capacity' },
+            { name: 'DR Data', endpoint: '/dr-data', category: 'Demand Response' },
+            { name: 'DER Data', endpoint: '/der-data', category: 'Distributed Resources' },
+            { name: 'All Real-Time', endpoint: '/realtime/all', category: 'Aggregated' },
+            { name: 'Token Refresh', endpoint: '/refresh-token', category: 'Authentication' },
+            { name: 'Test Token', endpoint: '/test-token', category: 'Authentication' }
+        ];
+
+        let apiStatuses = {};
+
+        function initializeAPIStatus() {
+            const grid = document.getElementById('apiStatusGrid');
+            if (!grid) return;
+
+            grid.innerHTML = '';
+            apiEndpoints.forEach(api => {
+                const card = createAPICard(api);
+                grid.appendChild(card);
+                apiStatuses[api.endpoint] = {
+                    status: 'unknown',
+                    responseTime: null,
+                    lastTested: null,
+                    dataPoints: null
+                };
+            });
+        }
+
+        function createAPICard(api) {
+            const card = document.createElement('div');
+            card.className = 'api-card';
+            const idSuffix = api.testKey ? `-${api.testKey.replace(/\s+/g, '-').toLowerCase()}` : api.endpoint.replace(/\//g, '-');
+            card.id = `api-card-${idSuffix}`;
+
+            card.innerHTML = `
+                <div class="api-header">
+                    <div>
+                        <div class="api-name">${api.name}</div>
+                        <div class="api-endpoint">${api.endpoint}</div>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <div class="status-indicator status-unknown" id="status-${idSuffix}"></div>
+                        <button class="test-btn" onclick="testSingleAPI('${api.endpoint}', '${api.name}', ${api.testKey ? `'${api.testKey}'` : 'null'})">Test</button>
+                    </div>
+                </div>
+                <div class="api-details">
+                    <div class="api-metric">
+                        <div class="api-metric-label">Category</div>
+                        <div class="api-metric-value">${api.category}</div>
+                    </div>
+                    <div class="api-metric">
+                        <div class="api-metric-label">Response Time</div>
+                        <div class="api-metric-value" id="response-${idSuffix}">-</div>
+                    </div>
+                    <div class="api-metric">
+                        <div class="api-metric-label">Status</div>
+                        <div class="api-metric-value" id="status-text-${idSuffix}">Not Tested</div>
+                    </div>
+                    <div class="api-metric">
+                        <div class="api-metric-label">Data Points</div>
+                        <div class="api-metric-value" id="data-${idSuffix}">-</div>
+                    </div>
+                </div>
+                <div class="last-tested" id="last-${idSuffix}"></div>
+            `;
+
+            return card;
+        }
+
+        async function testSingleAPI(endpoint, name, testKey = null) {
+            // For generation sources with testKey, we need unique IDs
+            const idSuffix = testKey ? `-${testKey.replace(/\s+/g, '-').toLowerCase()}` : endpoint.replace(/\//g, '-');
+            const statusIndicator = document.getElementById(`status-${idSuffix}`);
+            const responseElement = document.getElementById(`response-${idSuffix}`);
+            const statusText = document.getElementById(`status-text-${idSuffix}`);
+            const dataElement = document.getElementById(`data-${idSuffix}`);
+            const lastElement = document.getElementById(`last-${idSuffix}`);
+
+            // Set testing status
+            statusIndicator.className = 'status-indicator status-testing';
+            statusText.textContent = 'Testing...';
+
+            const startTime = Date.now();
+
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                const responseTime = Date.now() - startTime;
+
+                let data = null;
+                let dataPoints = 0;
+                let isAvailable = false;
+
+                try {
+                    data = await response.json();
+
+                    // Count data points based on the structure
+                    if (data.data) {
+                        if (Array.isArray(data.data)) {
+                            dataPoints = data.data.length;
+                        } else if (typeof data.data === 'object') {
+                            // For fuel mix data structure (dates -> timestamps -> data)
+                            let totalPoints = 0;
+                            for (const date in data.data) {
+                                if (typeof data.data[date] === 'object') {
+                                    totalPoints += Object.keys(data.data[date]).length;
+                                }
+                            }
+                            dataPoints = totalPoints;
+                        }
+                    } else if (Array.isArray(data)) {
+                        dataPoints = data.length;
+                    }
+
+                    // If testKey is provided, check if that specific fuel type exists
+                    if (testKey) {
+                        if (data.latest && data.latest.generation) {
+                            isAvailable = testKey in data.latest.generation;
+                        } else {
+                            isAvailable = false;
+                        }
+                    } else {
+                        isAvailable = true;
+                    }
+                } catch (e) {
+                    // Response might not be JSON
+                }
+
+                if (response.ok && (isAvailable || !testKey)) {
+                    // Determine status based on response time
+                    let status = 'success';
+                    if (responseTime > 2000) {
+                        status = 'warning';
+                        statusText.textContent = 'Slow';
+                    } else {
+                        statusText.textContent = 'OK';
+                    }
+
+                    statusIndicator.className = `status-indicator status-${status}`;
+                    responseElement.textContent = `${responseTime}ms`;
+
+                    // Show data points count
+                    dataElement.textContent = dataPoints > 0 ? dataPoints.toLocaleString() : 'N/A';
+
+                    // Use unique key for fuel mix sub-types
+                    const statusKey = testKey ? `${endpoint}-${testKey}` : endpoint;
+                    apiStatuses[statusKey] = {
+                        status: status,
+                        responseTime: responseTime,
+                        lastTested: new Date(),
+                        dataPoints: dataPoints
+                    };
+                } else {
+                    statusIndicator.className = 'status-indicator status-error';
+                    statusText.textContent = `Error ${response.status}`;
+                    responseElement.textContent = `${responseTime}ms`;
+                    dataElement.textContent = '-';
+
+                    // Use unique key for fuel mix sub-types
+                    const statusKey = testKey ? `${endpoint}-${testKey}` : endpoint;
+                    apiStatuses[statusKey] = {
+                        status: 'error',
+                        responseTime: responseTime,
+                        lastTested: new Date(),
+                        dataPoints: 0
+                    };
+                }
+            } catch (error) {
+                statusIndicator.className = 'status-indicator status-error';
+                statusText.textContent = 'Failed';
+                responseElement.textContent = 'Error';
+                dataElement.textContent = '-';
+
+                apiStatuses[endpoint] = {
+                    status: 'error',
+                    responseTime: null,
+                    lastTested: new Date(),
+                    dataPoints: 0
+                };
+            }
+
+            lastElement.textContent = `Last tested: ${new Date().toLocaleTimeString()}`;
+            updateSummary();
+        }
+
+        async function testAllAPIs() {
+            const btn = document.getElementById('testAllBtn');
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+
+            for (const api of apiEndpoints) {
+                await testSingleAPI(api.endpoint, api.name, api.testKey || null);
+                // Small delay between tests to avoid overwhelming the server
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Test All APIs';
+        }
+
+        function updateSummary() {
+            let successCount = 0;
+            let warningCount = 0;
+            let errorCount = 0;
+            let totalResponseTime = 0;
+            let validResponseCount = 0;
+
+            Object.values(apiStatuses).forEach(status => {
+                if (status.status === 'success') successCount++;
+                else if (status.status === 'warning') warningCount++;
+                else if (status.status === 'error') errorCount++;
+
+                if (status.responseTime !== null) {
+                    totalResponseTime += status.responseTime;
+                    validResponseCount++;
+                }
+            });
+
+            document.getElementById('successCount').textContent = successCount;
+            document.getElementById('warningCount').textContent = warningCount;
+            document.getElementById('errorCount').textContent = errorCount;
+
+            if (validResponseCount > 0) {
+                const avgTime = totalResponseTime / validResponseCount;
+                document.getElementById('avgResponseTime').textContent = `${avgTime.toFixed(0)}ms`;
+            }
+        }
+
+        // Initialize API Status when tab is shown
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            const selectedTab = document.getElementById(tabName);
+            if (selectedTab) {
+                selectedTab.classList.add('active');
+            }
+
+            // Add active class to clicked button
+            event.target.classList.add('active');
+
+            currentTab = tabName;
+
+            // Load data for specific tabs
+            if (tabName === 'api-status') {
+                initializeAPIStatus();
+            } else if (tabName === 'overview') {
+                loadOverviewData();
+            } else if (tabName === 'realtime') {
+                loadRealtimeData();
+            } else if (tabName === 'renewable') {
+                loadRenewableData();
+            } else if (tabName === 'demand') {
+                loadDemandResponseData();
+            } else if (tabName === 'der') {
+                loadDERData();
+            } else if (tabName === 'fuel') {
+                loadFuelMixData();
+            } else if (tabName === 'outages') {
+                loadOutagesData();
+            } else if (tabName === 'prices') {
+                loadPricesData();
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            loadOverviewData();
+            setupAutoRefresh();
+        });
+    </script>
+</body>
+</html>

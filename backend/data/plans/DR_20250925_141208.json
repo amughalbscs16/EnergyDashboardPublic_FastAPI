@@ -1,0 +1,27 @@
+{
+  "id": "DR_20250925_141208",
+  "created_at": "2025-09-25T14:12:08.245212+00:00",
+  "window_start": "2025-09-25T16:12:08.234000+00:00",
+  "window_end": "2025-09-25T18:12:08.234000+00:00",
+  "strategy": "cost_minimize",
+  "status": "proposed",
+  "target_mw_total": 50.0,
+  "predicted_mw_total": 0,
+  "cohort_allocations": [],
+  "confidence_score": 0.0,
+  "constraints_applied": [
+    "Short notice period",
+    "Customer comfort limits enforced",
+    "Max weekly events checked"
+  ],
+  "explanation": "Strategy: Cost Minimize\nSystem stress level: low\nTargeting 0.0 MW reduction across 0 accounts\nConfidence level: 0.0%\nCurrent price: $30.69/MWh - targeting high-cost periods",
+  "situation_summary": {
+    "current_load_mw": 41568,
+    "current_price": 30.69,
+    "reserves_mw": 15000,
+    "forecast_peak_mw": 61309.1,
+    "forecast_peak_hour": 7,
+    "window_overlaps_peak": false,
+    "stress_level": "low"
+  }
+}

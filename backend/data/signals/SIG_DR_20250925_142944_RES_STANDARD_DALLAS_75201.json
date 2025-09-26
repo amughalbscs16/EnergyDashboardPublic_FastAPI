@@ -1,0 +1,13 @@
+{
+  "id": "SIG_DR_20250925_142944_RES_STANDARD_DALLAS_75201",
+  "plan_id": "DR_20250925_142944",
+  "cohort_id": "RES_STANDARD_DALLAS_75201",
+  "signal_type": "dr_event",
+  "created_at": "2025-09-25T09:30:00.662092",
+  "sent_at": "2025-09-25T09:30:00.662095",
+  "event_start": "2025-09-26T14:00:00+00:00",
+  "event_end": "2025-09-26T16:00:00+00:00",
+  "target_reduction_kw": 0.0,
+  "message": "Demand response event: 0.0 MW reduction requested. Participate to earn rewards.",
+  "status": "sent"
+}

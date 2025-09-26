@@ -1,0 +1,13 @@
+{
+  "id": "SIG_DR_20250925_142944_COM_HVAC_AUSTIN_78704",
+  "plan_id": "DR_20250925_142944",
+  "cohort_id": "COM_HVAC_AUSTIN_78704",
+  "signal_type": "dr_event",
+  "created_at": "2025-09-25T09:30:00.661347",
+  "sent_at": "2025-09-25T09:30:00.661351",
+  "event_start": "2025-09-26T14:00:00+00:00",
+  "event_end": "2025-09-26T16:00:00+00:00",
+  "target_reduction_kw": 6190.0,
+  "message": "Demand Response Event: Adjust HVAC setpoints by 3.0\u00b0F. Target: 6.2 MW reduction.",
+  "status": "sent"
+}

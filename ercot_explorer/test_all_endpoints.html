@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ERCOT All Endpoints Test Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .endpoint-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .endpoint-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .endpoint-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .endpoint-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-idle { background: #E0E0E0; color: #666; }
+        .status-loading { background: #FFF9C4; color: #F57F17; }
+        .status-success { background: #C8E6C9; color: #2E7D32; }
+        .status-error { background: #FFCDD2; color: #C62828; }
+
+        .endpoint-info {
+            margin-bottom: 15px;
+        }
+
+        .endpoint-url {
+            font-size: 11px;
+            color: #999;
+            font-family: monospace;
+            word-break: break-all;
+            margin-bottom: 5px;
+        }
+
+        .endpoint-description {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #FFA500;
+            color: white;
+        }
+
+        .data-preview {
+            background: #f5f5f5;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            max-height: 200px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            word-break: break-all;
+        }
+
+        .data-summary {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+
+        .summary-label {
+            color: #666;
+        }
+
+        .summary-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .control-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .control-buttons button {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .category-header {
+            color: white;
+            font-size: 1.5rem;
+            margin: 30px 0 15px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 ERCOT Complete Data Dashboard - All Endpoints</h1>
+
+        <div class="control-panel">
+            <div class="control-buttons">
+                <button class="btn-success" onclick="testAllPublic()">🌐 Test All Public APIs</button>
+                <button class="btn-warning" onclick="testAllAuthenticated()">🔐 Test Authenticated APIs</button>
+                <button class="btn-primary" onclick="testAll()">🚀 Test Everything</button>
+                <button class="btn-primary" onclick="clearAll()">🗑️ Clear All</button>
+                <button class="btn-primary" onclick="showStats()">📊 Show Stats</button>
+            </div>
+        </div>
+
+        <div class="stats-panel" id="statsPanel" style="display: none;">
+            <div class="stat-item">
+                <div class="stat-value" id="totalCount">0</div>
+                <div class="stat-label">Total Endpoints</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="successCount">0</div>
+                <div class="stat-label">Successful</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="errorCount">0</div>
+                <div class="stat-label">Failed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="pendingCount">0</div>
+                <div class="stat-label">Pending</div>
+            </div>
+        </div>
+
+        <!-- Public APIs (No Auth Required) -->
+        <h2 class="category-header">📊 Public Real-Time Data (No Auth Required)</h2>
+        <div class="dashboard-grid" id="public-endpoints">
+            <!-- Supply & Demand -->
+            <div class="endpoint-card" id="card-supply-demand">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">Supply & Demand</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/realtime/supply-demand</div>
+                    <div class="endpoint-description">Real-time grid supply and demand conditions</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('supply-demand', '/realtime/supply-demand')">
+                    Fetch Data
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+
+            <!-- Fuel Mix -->
+            <div class="endpoint-card" id="card-fuel-mix">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">Fuel Mix</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/realtime/fuel-mix</div>
+                    <div class="endpoint-description">Current generation by fuel type</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('fuel-mix', '/realtime/fuel-mix')">
+                    Fetch Data
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+
+            <!-- Generation Outages -->
+            <div class="endpoint-card" id="card-gen-outages">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">Generation Outages</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/public/generation-outages</div>
+                    <div class="endpoint-description">Real-time generation unit outages</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('gen-outages', '/public/generation-outages')">
+                    Fetch Data
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+
+            <!-- Daily PRC -->
+            <div class="endpoint-card" id="card-daily-prc">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">Daily PRC</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/public/daily-prc</div>
+                    <div class="endpoint-description">Physical Responsive Capability (reserves)</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('daily-prc', '/public/daily-prc')">
+                    Fetch Data
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+
+            <!-- Solar Power -->
+            <div class="endpoint-card" id="card-solar-power">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">Solar Power</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/public/solar-power-production</div>
+                    <div class="endpoint-description">Real-time solar generation data</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('solar-power', '/public/solar-power-production')">
+                    Fetch Data
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+
+            <!-- Wind Power -->
+            <div class="endpoint-card" id="card-wind-power">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">Wind Power</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/public/wind-power-production</div>
+                    <div class="endpoint-description">Real-time wind generation data</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('wind-power', '/public/wind-power-production')">
+                    Fetch Data
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+
+            <!-- All Real-Time Data -->
+            <div class="endpoint-card" id="card-realtime-all">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">All Real-Time</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/realtime/all</div>
+                    <div class="endpoint-description">Combined supply/demand and fuel mix data</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('realtime-all', '/realtime/all')">
+                    Fetch Data
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+        </div>
+
+        <!-- Authenticated APIs -->
+        <h2 class="category-header">🔐 Authenticated ERCOT APIs (Using Your Credentials)</h2>
+        <div class="dashboard-grid" id="auth-endpoints">
+            <!-- Test Token -->
+            <div class="endpoint-card" id="card-test-token">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">Test Authentication</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/test-token</div>
+                    <div class="endpoint-description">Verify ERCOT API authentication is working</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('test-token', '/test-token')">
+                    Test Auth
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+
+            <!-- List All Endpoints -->
+            <div class="endpoint-card" id="card-endpoints">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">List Endpoints</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/endpoints</div>
+                    <div class="endpoint-description">Get all configured ERCOT endpoints</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('endpoints', '/endpoints')">
+                    Fetch List
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+
+            <!-- DR Data -->
+            <div class="endpoint-card" id="card-dr-data">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">DR Data Bundle</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/dr-data</div>
+                    <div class="endpoint-description">All Demand Response related data</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('dr-data', '/dr-data')">
+                    Fetch DR Data
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+
+            <!-- DER Data -->
+            <div class="endpoint-card" id="card-der-data">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">DER Data Bundle</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/der-data</div>
+                    <div class="endpoint-description">All Distributed Energy Resources data</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('der-data', '/der-data')">
+                    Fetch DER Data
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+
+            <!-- Test All Endpoints -->
+            <div class="endpoint-card" id="card-test-all">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">Test All Auth Endpoints</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/test-all</div>
+                    <div class="endpoint-description">Test all configured authenticated endpoints</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('test-all', '/test-all')">
+                    Test All
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+
+            <!-- Individual Authenticated Endpoints -->
+            <div class="endpoint-card" id="card-rt-system">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">RT System Conditions</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/explore/np6-86-cd</div>
+                    <div class="endpoint-description">Real-time system conditions (authenticated)</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('rt-system', '/explore/np6-86-cd')">
+                    Fetch Data
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+
+            <div class="endpoint-card" id="card-load-forecast">
+                <div class="endpoint-header">
+                    <div class="endpoint-title">Load Forecast</div>
+                    <div class="status-badge status-idle">Idle</div>
+                </div>
+                <div class="endpoint-info">
+                    <div class="endpoint-url">/explore/np3-233-cd</div>
+                    <div class="endpoint-description">Day-ahead load forecast (authenticated)</div>
+                </div>
+                <button class="btn-primary" onclick="testEndpoint('load-forecast', '/explore/np3-233-cd')">
+                    Fetch Data
+                </button>
+                <div class="data-summary" style="display: none;"></div>
+                <div class="data-preview"></div>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <h2 class="category-header">📈 Data Summary</h2>
+        <div class="endpoint-card">
+            <div class="endpoint-header">
+                <div class="endpoint-title">Results Summary</div>
+                <div class="status-badge status-idle" id="summary-status">Idle</div>
+            </div>
+            <div class="data-preview" id="summary-content">
+                Click "Test Everything" to run all endpoint tests and see a comprehensive summary.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        let testResults = {};
+
+        function updateCardStatus(cardId, status, message = '') {
+            const card = document.getElementById(`card-${cardId}`);
+            if (!card) return;
+
+            const badge = card.querySelector('.status-badge');
+            if (!badge) return;
+
+            // Update status badge
+            badge.className = `status-badge status-${status}`;
+            badge.textContent = status === 'loading' ? 'Loading...' :
+                               status === 'success' ? 'Success' :
+                               status === 'error' ? 'Error' : 'Idle';
+
+            if (status === 'loading') {
+                badge.innerHTML = '<span class="loading-spinner"></span> Loading...';
+            }
+
+            // Store result
+            testResults[cardId] = { status, message, timestamp: new Date().toISOString() };
+        }
+
+        function displayData(cardId, data) {
+            const card = document.getElementById(`card-${cardId}`);
+            if (!card) return;
+
+            const preview = card.querySelector('.data-preview');
+            const summaryDiv = card.querySelector('.data-summary');
+
+            // Show summary if we have specific data
+            if (data.success && data.latest) {
+                summaryDiv.style.display = 'block';
+                let summaryHTML = '';
+
+                // For supply/demand
+                if (data.latest.demand !== undefined) {
+                    summaryHTML = `
+                        <div class="summary-item">
+                            <span class="summary-label">Demand:</span>
+                            <span class="summary-value">${(data.latest.demand || 0).toLocaleString()} MW</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Capacity:</span>
+                            <span class="summary-value">${(data.latest.capacity || 0).toLocaleString()} MW</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Reserve:</span>
+                            <span class="summary-value">${(data.latest.reserve || 0).toLocaleString()} MW</span>
+                        </div>
+                    `;
+                }
+                // For fuel mix
+                else if (data.latest.generation) {
+                    summaryHTML = `
+                        <div class="summary-item">
+                            <span class="summary-label">Total Generation:</span>
+                            <span class="summary-value">${(data.latest.total || 0).toLocaleString()} MW</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Time:</span>
+                            <span class="summary-value">${data.latest.time || 'N/A'}</span>
+                        </div>
+                    `;
+                }
+
+                summaryDiv.innerHTML = summaryHTML;
+            } else {
+                summaryDiv.style.display = 'none';
+            }
+
+            // Show raw data preview
+            const previewData = JSON.stringify(data, null, 2);
+            preview.textContent = previewData.length > 1000
+                ? previewData.substring(0, 1000) + '...'
+                : previewData;
+        }
+
+        async function testEndpoint(cardId, endpoint) {
+            updateCardStatus(cardId, 'loading');
+
+            try {
+                console.log(`Fetching: ${API_URL}${endpoint}`);
+                const response = await fetch(`${API_URL}${endpoint}`);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    updateCardStatus(cardId, 'success');
+                    displayData(cardId, data);
+                    console.log(`Success for ${cardId}:`, data);
+                } else {
+                    updateCardStatus(cardId, 'error');
+                    displayData(cardId, { error: `HTTP ${response.status}` });
+                }
+            } catch (error) {
+                updateCardStatus(cardId, 'error');
+                displayData(cardId, { error: error.message });
+                console.error(`Error for ${cardId}:`, error);
+            }
+
+            updateStats();
+        }
+
+        async function testAllPublic() {
+            const publicEndpoints = [
+                ['supply-demand', '/realtime/supply-demand'],
+                ['fuel-mix', '/realtime/fuel-mix'],
+                ['gen-outages', '/public/generation-outages'],
+                ['daily-prc', '/public/daily-prc'],
+                ['solar-power', '/public/solar-power-production'],
+                ['wind-power', '/public/wind-power-production'],
+                ['realtime-all', '/realtime/all']
+            ];
+
+            for (const [cardId, endpoint] of publicEndpoints) {
+                testEndpoint(cardId, endpoint);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
+
+        async function testAllAuthenticated() {
+            const authEndpoints = [
+                ['test-token', '/test-token'],
+                ['endpoints', '/endpoints'],
+                ['dr-data', '/dr-data'],
+                ['der-data', '/der-data'],
+                ['test-all', '/test-all'],
+                ['rt-system', '/explore/np6-86-cd'],
+                ['load-forecast', '/explore/np3-233-cd']
+            ];
+
+            for (const [cardId, endpoint] of authEndpoints) {
+                testEndpoint(cardId, endpoint);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
+
+        async function testAll() {
+            await testAllPublic();
+            await testAllAuthenticated();
+            generateSummary();
+        }
+
+        function clearAll() {
+            const allCards = document.querySelectorAll('.endpoint-card');
+            allCards.forEach(card => {
+                const badge = card.querySelector('.status-badge');
+                if (badge) {
+                    badge.className = 'status-badge status-idle';
+                    badge.textContent = 'Idle';
+                }
+
+                const preview = card.querySelector('.data-preview');
+                if (preview) preview.textContent = '';
+
+                const summary = card.querySelector('.data-summary');
+                if (summary) {
+                    summary.style.display = 'none';
+                    summary.innerHTML = '';
+                }
+            });
+
+            testResults = {};
+            updateStats();
+        }
+
+        function updateStats() {
+            const total = Object.keys(testResults).length;
+            const success = Object.values(testResults).filter(r => r.status === 'success').length;
+            const error = Object.values(testResults).filter(r => r.status === 'error').length;
+            const pending = document.querySelectorAll('.status-loading').length;
+
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('successCount').textContent = success;
+            document.getElementById('errorCount').textContent = error;
+            document.getElementById('pendingCount').textContent = pending;
+        }
+
+        function showStats() {
+            const statsPanel = document.getElementById('statsPanel');
+            statsPanel.style.display = statsPanel.style.display === 'none' ? 'flex' : 'none';
+            updateStats();
+        }
+
+        function generateSummary() {
+            const summaryContent = document.getElementById('summary-content');
+            const summaryStatus = document.getElementById('summary-status');
+
+            const total = Object.keys(testResults).length;
+            const success = Object.values(testResults).filter(r => r.status === 'success').length;
+            const error = Object.values(testResults).filter(r => r.status === 'error').length;
+
+            let summary = `Test Complete!\n\n`;
+            summary += `Total Endpoints Tested: ${total}\n`;
+            summary += `✅ Successful: ${success}\n`;
+            summary += `❌ Failed: ${error}\n\n`;
+
+            summary += `Working Endpoints:\n`;
+            Object.entries(testResults).forEach(([id, result]) => {
+                if (result.status === 'success') {
+                    summary += `  ✅ ${id}\n`;
+                }
+            });
+
+            summary += `\nFailed Endpoints:\n`;
+            Object.entries(testResults).forEach(([id, result]) => {
+                if (result.status === 'error') {
+                    summary += `  ❌ ${id}: ${result.message || 'Unknown error'}\n`;
+                }
+            });
+
+            summaryContent.textContent = summary;
+            summaryStatus.className = 'status-badge status-success';
+            summaryStatus.textContent = 'Complete';
+        }
+
+        // Initialize on load
+        window.onload = () => {
+            console.log('Dashboard loaded. API URL:', API_URL);
+            console.log('Total endpoints available for testing.');
+            updateStats();
+        };
+    </script>
+</body>
+</html>

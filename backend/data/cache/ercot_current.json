@@ -1,0 +1,21 @@
+{
+  "data": {
+    "timestamp": "2025-09-25T05:18:22.256302",
+    "system_load_mw": 31361,
+    "capacity_mw": 86000,
+    "operating_reserves_mw": 2816,
+    "price_per_mwh": 23.36,
+    "frequency_hz": 60.008,
+    "forecast_peak_mw": 47250,
+    "forecast_peak_hour": 16,
+    "renewable_output_mw": {
+      "wind": 14214,
+      "solar": 0,
+      "total": 14214
+    },
+    "alerts": [],
+    "data_source": "synthetic"
+  },
+  "timestamp": "2025-09-25T05:18:22.256322",
+  "expires": "2025-09-25T05:20:22.256324"
+}

@@ -1,0 +1,252 @@
+[
+  {
+    "id": "RES_EV_AUSTIN",
+    "name": "Residential EV - Austin Metro",
+    "segment": "Residential",
+    "sub_segment": "Electric Vehicle",
+    "num_accounts": 12500,
+    "flex_kw_per_account": 7.2,
+    "baseline_acceptance_rate": 0.65,
+    "peak_hours": [16, 17, 18, 19, 20],
+    "max_events_per_week": 5,
+    "min_notice_hours": 2,
+    "comfort_limit_f": 78,
+    "incentive_rate_per_kwh": 0.15,
+    "location": {
+      "city": "Austin",
+      "zip_codes": ["78701", "78702", "78703", "78704", "78705"],
+      "utility": "Austin Energy"
+    },
+    "characteristics": {
+      "avg_monthly_usage_kwh": 1850,
+      "has_solar": 0.35,
+      "has_battery": 0.15,
+      "smart_thermostat": 0.78
+    }
+  },
+  {
+    "id": "RES_SOLAR_HOUSTON",
+    "name": "Residential Solar+Battery - Houston",
+    "segment": "Residential",
+    "sub_segment": "Solar + Storage",
+    "num_accounts": 8200,
+    "flex_kw_per_account": 5.0,
+    "baseline_acceptance_rate": 0.75,
+    "peak_hours": [14, 15, 16, 17],
+    "max_events_per_week": 7,
+    "min_notice_hours": 1,
+    "comfort_limit_f": 76,
+    "incentive_rate_per_kwh": 0.12,
+    "location": {
+      "city": "Houston",
+      "zip_codes": ["77001", "77002", "77003", "77004", "77005"],
+      "utility": "CenterPoint Energy"
+    },
+    "characteristics": {
+      "avg_monthly_usage_kwh": 2100,
+      "has_solar": 1.0,
+      "has_battery": 1.0,
+      "smart_thermostat": 0.92
+    }
+  },
+  {
+    "id": "COM_HVAC_DALLAS",
+    "name": "Commercial HVAC - Dallas",
+    "segment": "Commercial",
+    "sub_segment": "Office Buildings",
+    "num_accounts": 450,
+    "flex_kw_per_account": 125.0,
+    "baseline_acceptance_rate": 0.55,
+    "peak_hours": [13, 14, 15, 16, 17],
+    "max_events_per_week": 3,
+    "min_notice_hours": 4,
+    "comfort_limit_f": 74,
+    "incentive_rate_per_kwh": 0.10,
+    "location": {
+      "city": "Dallas",
+      "zip_codes": ["75201", "75202", "75203", "75204"],
+      "utility": "Oncor Electric"
+    },
+    "characteristics": {
+      "avg_monthly_usage_kwh": 45000,
+      "has_solar": 0.25,
+      "has_battery": 0.10,
+      "smart_thermostat": 1.0
+    }
+  },
+  {
+    "id": "IND_MANUFACTURING_SA",
+    "name": "Industrial Manufacturing - San Antonio",
+    "segment": "Industrial",
+    "sub_segment": "Manufacturing",
+    "num_accounts": 85,
+    "flex_kw_per_account": 500.0,
+    "baseline_acceptance_rate": 0.45,
+    "peak_hours": [14, 15, 16, 17],
+    "max_events_per_week": 2,
+    "min_notice_hours": 24,
+    "comfort_limit_f": 0,
+    "incentive_rate_per_kwh": 0.08,
+    "location": {
+      "city": "San Antonio",
+      "zip_codes": ["78201", "78202", "78203"],
+      "utility": "CPS Energy"
+    },
+    "characteristics": {
+      "avg_monthly_usage_kwh": 250000,
+      "has_solar": 0.15,
+      "has_battery": 0.05,
+      "smart_thermostat": 0.0
+    }
+  },
+  {
+    "id": "RES_POOL_FW",
+    "name": "Residential Pool Pumps - Fort Worth",
+    "segment": "Residential",
+    "sub_segment": "Pool Owners",
+    "num_accounts": 6500,
+    "flex_kw_per_account": 2.5,
+    "baseline_acceptance_rate": 0.70,
+    "peak_hours": [14, 15, 16, 17, 18],
+    "max_events_per_week": 7,
+    "min_notice_hours": 0.5,
+    "comfort_limit_f": 0,
+    "incentive_rate_per_kwh": 0.11,
+    "location": {
+      "city": "Fort Worth",
+      "zip_codes": ["76101", "76102", "76103", "76104"],
+      "utility": "Oncor Electric"
+    },
+    "characteristics": {
+      "avg_monthly_usage_kwh": 2400,
+      "has_solar": 0.20,
+      "has_battery": 0.08,
+      "smart_thermostat": 0.65
+    }
+  },
+  {
+    "id": "COM_RETAIL_ELPASO",
+    "name": "Commercial Retail - El Paso",
+    "segment": "Commercial",
+    "sub_segment": "Retail Stores",
+    "num_accounts": 320,
+    "flex_kw_per_account": 45.0,
+    "baseline_acceptance_rate": 0.60,
+    "peak_hours": [12, 13, 14, 15, 16],
+    "max_events_per_week": 4,
+    "min_notice_hours": 2,
+    "comfort_limit_f": 75,
+    "incentive_rate_per_kwh": 0.09,
+    "location": {
+      "city": "El Paso",
+      "zip_codes": ["79901", "79902", "79903"],
+      "utility": "El Paso Electric"
+    },
+    "characteristics": {
+      "avg_monthly_usage_kwh": 18000,
+      "has_solar": 0.30,
+      "has_battery": 0.12,
+      "smart_thermostat": 0.85
+    }
+  },
+  {
+    "id": "AGR_IRRIGATION_VALLEY",
+    "name": "Agricultural Irrigation - Rio Grande Valley",
+    "segment": "Agricultural",
+    "sub_segment": "Irrigation Systems",
+    "num_accounts": 180,
+    "flex_kw_per_account": 75.0,
+    "baseline_acceptance_rate": 0.80,
+    "peak_hours": [13, 14, 15, 16],
+    "max_events_per_week": 5,
+    "min_notice_hours": 12,
+    "comfort_limit_f": 0,
+    "incentive_rate_per_kwh": 0.07,
+    "location": {
+      "city": "McAllen",
+      "zip_codes": ["78501", "78502", "78503"],
+      "utility": "Magic Valley Electric"
+    },
+    "characteristics": {
+      "avg_monthly_usage_kwh": 35000,
+      "has_solar": 0.10,
+      "has_battery": 0.05,
+      "smart_thermostat": 0.0
+    }
+  },
+  {
+    "id": "RES_SMART_THERMO_SUBURBS",
+    "name": "Residential Smart Thermostats - Suburbs",
+    "segment": "Residential",
+    "sub_segment": "Smart Home",
+    "num_accounts": 28000,
+    "flex_kw_per_account": 3.5,
+    "baseline_acceptance_rate": 0.58,
+    "peak_hours": [15, 16, 17, 18, 19],
+    "max_events_per_week": 4,
+    "min_notice_hours": 1,
+    "comfort_limit_f": 77,
+    "incentive_rate_per_kwh": 0.13,
+    "location": {
+      "city": "Plano/Frisco",
+      "zip_codes": ["75023", "75024", "75025", "75026"],
+      "utility": "CoServ Electric"
+    },
+    "characteristics": {
+      "avg_monthly_usage_kwh": 1950,
+      "has_solar": 0.18,
+      "has_battery": 0.06,
+      "smart_thermostat": 1.0
+    }
+  },
+  {
+    "id": "COM_DATACENTER_AUSTIN",
+    "name": "Data Centers - Austin Tech Corridor",
+    "segment": "Commercial",
+    "sub_segment": "Data Centers",
+    "num_accounts": 25,
+    "flex_kw_per_account": 2000.0,
+    "baseline_acceptance_rate": 0.35,
+    "peak_hours": [14, 15, 16, 17],
+    "max_events_per_week": 2,
+    "min_notice_hours": 48,
+    "comfort_limit_f": 68,
+    "incentive_rate_per_kwh": 0.06,
+    "location": {
+      "city": "Austin",
+      "zip_codes": ["78758", "78759"],
+      "utility": "Austin Energy"
+    },
+    "characteristics": {
+      "avg_monthly_usage_kwh": 850000,
+      "has_solar": 0.40,
+      "has_battery": 0.80,
+      "smart_thermostat": 0.0
+    }
+  },
+  {
+    "id": "MUN_WATER_TREATMENT",
+    "name": "Municipal Water Treatment Plants",
+    "segment": "Municipal",
+    "sub_segment": "Water Infrastructure",
+    "num_accounts": 45,
+    "flex_kw_per_account": 350.0,
+    "baseline_acceptance_rate": 0.65,
+    "peak_hours": [14, 15, 16, 17],
+    "max_events_per_week": 3,
+    "min_notice_hours": 8,
+    "comfort_limit_f": 0,
+    "incentive_rate_per_kwh": 0.05,
+    "location": {
+      "city": "Various",
+      "zip_codes": ["75201", "77001", "78701", "78201"],
+      "utility": "Various"
+    },
+    "characteristics": {
+      "avg_monthly_usage_kwh": 125000,
+      "has_solar": 0.20,
+      "has_battery": 0.15,
+      "smart_thermostat": 0.0
+    }
+  }
+]

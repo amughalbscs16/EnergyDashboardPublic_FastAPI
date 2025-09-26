@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Energy Prices</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Energy Prices Test</h1>
+
+    <div>
+        <h2>Price Metrics</h2>
+        <div>Real-Time Price: <span id="rtPrice">-</span></div>
+        <div>Day Ahead Price: <span id="daPrice">-</span></div>
+        <div>Price Spread: <span id="priceSpread">-</span></div>
+        <div>24h Avg Price: <span id="avgPrice">-</span></div>
+    </div>
+
+    <div style="width: 600px; height: 400px;">
+        <canvas id="rtPriceChart"></canvas>
+    </div>
+
+    <div style="width: 600px; height: 400px;">
+        <canvas id="fuelPriceChart"></canvas>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let charts = {};
+
+        async function testEnergyPricing() {
+            console.log('Testing energy pricing...');
+
+            try {
+                // Fetch PRC data
+                const prcResponse = await fetch(`${API_BASE}/public/daily-prc`);
+                const prcData = await prcResponse.json();
+                console.log('PRC data success:', prcData.success);
+
+                // Fetch fuel mix data
+                const fuelResponse = await fetch(`${API_BASE}/realtime/fuel-mix`);
+                const fuelData = await fuelResponse.json();
+                console.log('Fuel data success:', fuelData.success);
+
+                // Fetch supply/demand data
+                const demandResponse = await fetch(`${API_BASE}/realtime/supply-demand`);
+                const demandData = await demandResponse.json();
+                console.log('Demand data success:', demandData.success);
+
+                if (prcData.success && demandData.success && fuelData.success) {
+                    console.log('Processing pricing...');
+                    processEnergyPricing(prcData.data, demandData.data, fuelData.data);
+                }
+
+                updateFuelPriceChart();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function processEnergyPricing(prcData, demandData, fuelData) {
+            console.log('Processing energy pricing with data:', {
+                prcData: !!prcData,
+                demandData: !!demandData,
+                fuelData: !!fuelData
+            });
+
+            // Extract latest data from the last entry in the data array
+            const latestDemandData = demandData.data && demandData.data.length > 0 ?
+                demandData.data[demandData.data.length - 1] : null;
+
+            const currentDemand = latestDemandData ? latestDemandData.demand : 50000;
+            const currentCapacity = latestDemandData ? latestDemandData.capacity : 75000;
+            const currentPRC = prcData.current_condition ?
+                parseInt(prcData.current_condition.prc_value.replace(/,/g, '')) : 10000;
+
+            console.log('Extracted values:', {
+                currentDemand,
+                currentCapacity,
+                currentPRC
+            });
+
+            // Calculate utilization factor
+            const utilizationRate = currentDemand / currentCapacity;
+
+            // More realistic ERCOT pricing based on market conditions
+            const basePriceLow = 20; // $/MWh base price during low demand
+            const basePriceHigh = 120; // $/MWh during peak demand
+            const scarcityPrice = 300; // $/MWh during scarcity conditions
+
+            // Calculate reserve margin as percentage
+            const reserveMargin = (currentCapacity - currentDemand) / currentCapacity;
+            console.log('Reserve margin:', reserveMargin);
+
+            // Scarcity pricing kicks in when reserves are low
+            let scarcityMultiplier = 1;
+            if (reserveMargin < 0.1) { // Less than 10% reserves
+                scarcityMultiplier = 3 + (0.1 - reserveMargin) * 10; // Exponential increase
+            } else if (reserveMargin < 0.15) { // Less than 15% reserves
+                scarcityMultiplier = 1.5 + (0.15 - reserveMargin) * 10;
+            }
+
+            // Base price increases with utilization
+            const basePrice = basePriceLow + (basePriceHigh - basePriceLow) * Math.pow(utilizationRate, 2);
+
+            // Apply scarcity multiplier
+            const estimatedRTPrice = Math.min(scarcityPrice, basePrice * scarcityMultiplier);
+
+            // Day-ahead is typically 85-95% of real-time in ERCOT
+            const estimatedDAPrice = estimatedRTPrice * (0.85 + Math.random() * 0.1);
+
+            console.log('Calculated prices:', {
+                utilizationRate,
+                reserveMargin,
+                scarcityMultiplier,
+                estimatedRTPrice,
+                estimatedDAPrice
+            });
+
+            // Update display
+            document.getElementById('rtPrice').textContent = `$${Math.max(0, estimatedRTPrice).toFixed(2)}`;
+            document.getElementById('daPrice').textContent = `$${Math.max(0, estimatedDAPrice).toFixed(2)}`;
+
+            const spread = estimatedRTPrice - estimatedDAPrice;
+            document.getElementById('priceSpread').textContent = `$${spread > 0 ? '+' : ''}${spread.toFixed(2)}`;
+
+            // Calculate 24h average based on hourly price variations
+            let total24hPrice = 0;
+            for (let hour = 0; hour < 24; hour++) {
+                const timeMultiplier = 0.8 + 0.4 * Math.sin((hour - 6) * Math.PI / 12);
+                const hourlyPrice = estimatedRTPrice * timeMultiplier;
+                total24hPrice += hourlyPrice;
+            }
+            const avgPrice = total24hPrice / 24;
+            document.getElementById('avgPrice').textContent = `$${avgPrice.toFixed(2)}`;
+
+            console.log('Updated price displays, now updating charts...');
+
+            // Update charts with estimated data
+            updateRTPriceChart(latestDemandData, estimatedRTPrice);
+        }
+
+        function updateRTPriceChart(demandData, basePrice) {
+            console.log('Updating RT Price Chart with basePrice:', basePrice);
+            const ctx = document.getElementById('rtPriceChart').getContext('2d');
+
+            if (charts.rtPrice) {
+                charts.rtPrice.destroy();
+            }
+
+            // Create estimated price data for different zones based on demand patterns
+            const labels = [];
+            const hubPrices = [];
+
+            // Generate 24 hours of estimated pricing data
+            for (let hour = 0; hour < 24; hour++) {
+                labels.push(`${hour}:00`);
+
+                // Price varies by time of day and zone
+                const timeMultiplier = 0.8 + 0.4 * Math.sin((hour - 6) * Math.PI / 12); // Peak around 6 PM
+                const baseTODPrice = basePrice * timeMultiplier;
+
+                // Zone premiums/discounts
+                hubPrices.push(baseTODPrice);
+            }
+
+            charts.rtPrice = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Hub',
+                        data: hubPrices,
+                        borderColor: '#FF6384',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Price ($/MWh)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            console.log('RT Price Chart created successfully');
+        }
+
+        function updateFuelPriceChart() {
+            console.log('Updating Fuel Price Chart...');
+            const ctx = document.getElementById('fuelPriceChart').getContext('2d');
+
+            if (charts.fuelPrice) {
+                charts.fuelPrice.destroy();
+            }
+
+            // More realistic fuel-based pricing trends
+            const labels = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'];
+            const gasPrice = [42, 45, 52, 68, 74, 58];
+            const coalPrice = [32, 33, 35, 38, 36, 34];
+            const nuclearPrice = [20, 20, 20, 20, 20, 20];
+            const windPrice = [-5, -8, -2, 15, 25, 12];
+            const solarPrice = [0, 0, 8, 35, 45, 28];
+
+            charts.fuelPrice = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Natural Gas',
+                        data: gasPrice,
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                        borderColor: '#FF6384',
+                        borderWidth: 1
+                    }, {
+                        label: 'Coal',
+                        data: coalPrice,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: '#36A2EB',
+                        borderWidth: 1
+                    }, {
+                        label: 'Nuclear',
+                        data: nuclearPrice,
+                        backgroundColor: 'rgba(255, 206, 86, 0.6)',
+                        borderColor: '#FFCE56',
+                        borderWidth: 1
+                    }, {
+                        label: 'Wind',
+                        data: windPrice,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: '#4BC0C0',
+                        borderWidth: 1
+                    }, {
+                        label: 'Solar',
+                        data: solarPrice,
+                        backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                        borderColor: '#FF9F40',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time of Day'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Marginal Cost ($/MWh)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            console.log('Fuel Price Chart created successfully');
+        }
+
+        // Test when page loads
+        window.onload = () => {
+            testEnergyPricing();
+        };
+    </script>
+</body>
+</html>

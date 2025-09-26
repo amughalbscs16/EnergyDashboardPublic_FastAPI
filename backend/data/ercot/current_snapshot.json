@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-09-26T02:04:45.148892",
+  "system_load_mw": 35090.1,
+  "capacity_mw": 85000,
+  "reserves_mw": 47909.9,
+  "price_per_mwh": 64.49,
+  "frequency_hz": 59.962,
+  "generation_mix": {
+    "natural_gas": 13334,
+    "wind": 9825,
+    "coal": 6316,
+    "nuclear": 3509,
+    "solar": 1755,
+    "other": 351
+  },
+  "congestion_zones": []
+}

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ERCOT Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .loading {
+            color: orange;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>ERCOT API Connection Test</h1>
+
+    <div>
+        <button onclick="testConnection()">Test Backend Connection</button>
+        <button onclick="testSupplyDemand()">Test Supply & Demand</button>
+        <button onclick="testFuelMix()">Test Fuel Mix</button>
+    </div>
+
+    <div id="status"></div>
+    <div id="result"></div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+
+        function setStatus(message, className = '') {
+            document.getElementById('status').innerHTML = `<p class="${className}">${message}</p>`;
+        }
+
+        function setResult(data) {
+            document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function testConnection() {
+            setStatus('Testing connection...', 'loading');
+            setResult('');
+
+            try {
+                console.log('Fetching from:', API_URL);
+                const response = await fetch(API_URL);
+                console.log('Response status:', response.status);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setStatus('✅ Connection successful!', 'success');
+                    setResult(data);
+                } else {
+                    setStatus(`❌ HTTP Error: ${response.status}`, 'error');
+                    setResult({ error: `HTTP ${response.status}` });
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                setStatus(`❌ Connection failed: ${error.message}`, 'error');
+                setResult({
+                    error: error.message,
+                    details: 'Check browser console for more info'
+                });
+            }
+        }
+
+        async function testSupplyDemand() {
+            setStatus('Fetching supply & demand data...', 'loading');
+            setResult('');
+
+            try {
+                const url = `${API_URL}/realtime/supply-demand`;
+                console.log('Fetching from:', url);
+
+                const response = await fetch(url);
+                console.log('Response status:', response.status);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setStatus('✅ Data received successfully!', 'success');
+
+                    // Show summary if we have latest data
+                    if (data.latest) {
+                        const latest = data.latest;
+                        setResult({
+                            summary: {
+                                demand: latest.demand + ' MW',
+                                capacity: latest.capacity + ' MW',
+                                reserve: latest.reserve + ' MW',
+                                timestamp: latest.timestamp
+                            },
+                            full_data: data
+                        });
+                    } else {
+                        setResult(data);
+                    }
+                } else {
+                    setStatus(`❌ HTTP Error: ${response.status}`, 'error');
+                    setResult({ error: `HTTP ${response.status}` });
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                setStatus(`❌ Fetch failed: ${error.message}`, 'error');
+                setResult({
+                    error: error.message,
+                    details: 'Check browser console for more info'
+                });
+            }
+        }
+
+        async function testFuelMix() {
+            setStatus('Fetching fuel mix data...', 'loading');
+            setResult('');
+
+            try {
+                const url = `${API_URL}/realtime/fuel-mix`;
+                console.log('Fetching from:', url);
+
+                const response = await fetch(url);
+                console.log('Response status:', response.status);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setStatus('✅ Data received successfully!', 'success');
+                    setResult(data);
+                } else {
+                    setStatus(`❌ HTTP Error: ${response.status}`, 'error');
+                    setResult({ error: `HTTP ${response.status}` });
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                setStatus(`❌ Fetch failed: ${error.message}`, 'error');
+                setResult({
+                    error: error.message,
+                    details: 'Check browser console for more info'
+                });
+            }
+        }
+
+        // Test on load
+        window.onload = () => {
+            console.log('Page loaded. API URL:', API_URL);
+            console.log('Click a button to test the connection.');
+        };
+    </script>
+</body>
+</html>
