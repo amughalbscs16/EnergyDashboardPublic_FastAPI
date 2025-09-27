@@ -1,189 +1,103 @@
-# Utility HITL Portal - Texas Grid Demand Response System
+# ERCOT Energy Dashboard
 
-A demonstration portal for utility operators to coordinate demand response (DR) events on the Texas ERCOT grid using Human-in-the-Loop (HITL) approval workflows.
+## Overview
+Real-time energy market dashboard for ERCOT (Electric Reliability Council of Texas) providing comprehensive visualization of Texas electricity grid data, pricing, and market conditions.
 
 ## Features
 
-- **Real-time Grid Monitoring**: Displays ERCOT system load, prices, and reserves
-- **Weather Integration**: Shows temperature and conditions affecting demand
-- **Customer Cohort Management**: 6 pre-configured segments with ~13,000 accounts
-- **AI-Powered Planning**: Agent proposes optimal DR strategies
-- **HITL Approval**: Operators review and approve before dispatch
-- **OpenADR-style Signals**: Simulated endpoint responses
+- **Real-Time Energy Pricing** - Live market prices, day-ahead pricing, and settlement point analysis
+- **Supply & Demand Monitoring** - Current grid load, available capacity, and reserve margins
+- **Generation Mix Tracking** - Real-time fuel mix including solar, wind, gas, nuclear, and coal
+- **Outage Monitoring** - Power plant outage tracking with planned vs unplanned analysis
+- **Market Analytics** - Physical Responsive Capability (PRC) trends and market conditions
+- **Interactive Visualizations** - Dynamic charts powered by Chart.js
 
 ## Quick Start
 
-### Option 1: Using Docker (Recommended)
+### Prerequisites
+- Python 3.8+
 
+### Installation
+
+1. Clone the repository
 ```bash
-# Start both backend and frontend
-docker-compose up
-
-# Access the application
-# Frontend: http://localhost:3001
-# Backend API: http://localhost:8000
-# API Docs: http://localhost:8000/docs
+git clone https://github.com/amughalbscs16/EnergyDashboardRealDataPublic.git
+cd EnergyDashboardRealDataPublic
 ```
 
-### Option 2: Manual Installation
-
-#### Backend Setup
+2. Install dependencies
 ```bash
-cd backend
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# Mac/Linux:
-source venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Run the backend
-python -m uvicorn app.main:app --reload --port 8000
 ```
 
-#### Frontend Setup
+3. Set up environment variables
 ```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Run the frontend
-npm run dev
+cd ercot_explorer
+cp .env.example .env
+# Edit .env with your ERCOT API credentials
 ```
 
-Access the application at http://localhost:3001
-
-## Architecture
-
-```
-utility-portal/
-├── backend/          # FastAPI backend
-│   ├── app/
-│   │   ├── agents/   # DR planning intelligence
-│   │   ├── models/   # Data models
-│   │   ├── routers/  # API endpoints
-│   │   └── services/ # Data generation
-│   └── data/         # JSON storage
-│       ├── ercot/    # Grid data
-│       ├── weather/  # Weather cache
-│       ├── cohorts/  # Customer segments
-│       ├── plans/    # DR plans
-│       └── signals/  # OpenADR signals
-└── frontend/         # Next.js UI
-    └── src/
-        └── app/      # Dashboard components
+4. Start the backend API server
+```bash
+cd ercot_explorer
+python backend_simple.py
 ```
 
-## Usage Guide
+5. Open the dashboard
+```bash
+# Open ercot_explorer/dashboard.html in your browser
+# Or visit http://localhost:8080 if using the built-in server
+```
 
-### 1. View System Status
-- Monitor current grid load (GW)
-- Check electricity prices ($/MWh)
-- View temperature and weather
-- See 24-hour load forecast
+## Configuration
 
-### 2. Select Customer Cohorts
-Available segments with total flexibility:
-- **Residential EV** (Austin): 18.0 MW
-- **Residential Solar+Battery** (Houston): 6.0 MW
-- **Residential Standard** (Dallas): 21.3 MW
-- **Commercial HVAC** (Austin South): 11.3 MW
-- **Commercial Lighting** (Houston): 4.8 MW
-- **Industrial Manufacturing** (Dallas): 42.5 MW
+Create `.env` file in `ercot_explorer/` directory with your ERCOT API credentials:
+```
+ERCOT_USERNAME=your-email@example.com
+ERCOT_PASSWORD=your-password
+ERCOT_SUBSCRIPTION_KEY=your-subscription-key
+ERCOT_AUTH_URL=https://ercotb2c.b2clogin.com/ercotb2c.onmicrosoft.com/B2C_1_PUBAPI-ROPC-FLOW/oauth2/v2.0/token
+API_HOST=0.0.0.0
+API_PORT=8000
+FRONTEND_PORT=8080
+```
 
-Total: **103.9 MW** flexible capacity
+Get your ERCOT API credentials at: https://www.ercot.com/services/rq/public/public-api
 
-### 3. Generate DR Plan
-1. Select cohorts (or leave blank for auto-selection)
-2. Choose strategy:
-   - **Balanced**: Optimize across all factors
-   - **Cost Minimize**: Target high-price periods
-   - **Reliability**: Enhance grid stability
-   - **Emergency**: Maximum reduction
-3. Click "Generate Plan"
+## Project Structure
 
-### 4. Review & Approve
-- Review target MW reduction
-- Check predicted response
-- Verify confidence score
-- Click "Approve & Send" to dispatch signals
-
-### 5. Monitor Results
-- View signal status at `/api/v1/signals`
-- Check plan execution at `/api/v1/plans/{plan_id}/status`
+```
+├── ercot_explorer/
+│   ├── dashboard.html           # Main dashboard interface
+│   ├── backend_simple.py        # FastAPI backend with ERCOT API integration
+│   ├── test_all_endpoints.html  # API endpoint testing utility
+│   ├── test_connection.html     # Connection testing tool
+│   ├── test_energy_prices.html  # Energy pricing test interface
+│   ├── .env                     # Your API credentials (not in repo)
+│   └── .env.example             # Template for environment variables
+├── requirements.txt             # Python dependencies
+├── README.md                   # This file
+└── .gitignore                 # Git ignore rules
+```
 
 ## API Endpoints
 
-### ERCOT Data
-- `GET /api/v1/context/ercot/current` - Current system conditions
-- `GET /api/v1/context/ercot/forecast` - 24-hour forecast
+The backend provides these endpoints for the dashboard:
 
-### Weather
-- `GET /api/v1/context/weather/{zip}` - Weather by ZIP code
+- `GET /realtime/supply-demand` - Current grid supply and demand
+- `GET /realtime/fuel-mix` - Real-time generation by fuel type
+- `GET /public/generation-outages` - Current power plant outages
+- `GET /public/daily-prc` - Physical Responsive Capability data
+- `GET /public/solar-power-production` - Solar generation data
+- `GET /public/wind-power-production` - Wind generation data
 
-### Cohorts
-- `GET /api/v1/cohorts` - List all cohorts
-- `GET /api/v1/cohorts/{id}/flexibility` - Cohort flexibility
+## Technologies Used
 
-### DR Plans
-- `POST /api/v1/plans/propose` - Create new plan
-- `POST /api/v1/plans/{id}/approve` - Approve plan
-- `GET /api/v1/plans/{id}/status` - Plan status
-
-Full API documentation: http://localhost:8000/docs
-
-## Data Sources
-
-- **ERCOT**: Synthetic data based on typical Texas grid patterns
-- **Weather**: Synthetic Texas summer conditions
-- **Load Profiles**: Based on NREL research patterns
-- **Cohorts**: Realistic customer segments for Texas cities
-
-## Demo Scenario
-
-For USCIS demonstration:
-
-"This portal helps Texas utilities manage electricity demand during peak periods. Using public grid data and weather forecasts, an AI agent identifies when the grid is stressed and recommends asking certain customer groups to reduce usage. A human operator reviews and approves these recommendations before any action is taken. The system simulates customer responses to show potential grid relief of 50-100 MW, equivalent to avoiding a small power plant startup. This supports grid reliability and reduces costs for all Texans."
-
-## Technical Stack
-
-- **Backend**: Python FastAPI, Pydantic, APScheduler
-- **Frontend**: Next.js, TypeScript, Tailwind CSS, Tremor
-- **Storage**: Local JSON files (easily upgradeable to PostgreSQL)
-- **Charts**: Recharts
-- **Icons**: Lucide React
-
-## Development
-
-### Add New Cohorts
-Edit `backend/app/services/data_generator.py`
-
-### Modify Planning Logic
-Edit `backend/app/agents/planner.py`
-
-### Update UI Components
-Edit `frontend/src/app/page.tsx`
-
-## Future Enhancements
-
-- Real ERCOT API integration (requires registration)
-- NOAA Weather API integration (working, ready to enable)
-- PostgreSQL for production storage
-- WebSocket for real-time updates
-- Historical analytics dashboard
-- Multi-user role management
+- **Backend**: FastAPI, Python, HTTPX for API calls
+- **Frontend**: Vanilla JavaScript, Chart.js for visualizations
+- **Styling**: Modern CSS with gradients and animations
+- **APIs**: ERCOT Public API for real-time Texas grid data
 
 ## License
 
-MIT
-
-## Support
-
-For questions or issues, please open a GitHub issue.
+MIT License

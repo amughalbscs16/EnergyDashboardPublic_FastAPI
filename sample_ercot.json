@@ -1,8 +1,0 @@
-{
-  "timestamp": "2025-09-24T01:57:51.402028",
-  "system_load_mw": 65432,
-  "capacity_mw": 78000,
-  "price_per_mwh": 45.23,
-  "forecast_peak_mw": 71000,
-  "forecast_peak_hour": 17
-}
