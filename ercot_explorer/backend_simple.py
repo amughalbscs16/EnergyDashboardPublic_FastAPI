@@ -10,9 +10,12 @@ import httpx
 import asyncio
 from datetime import datetime, timedelta
 import os
+import json
 from typing import Optional, Dict, List, Any
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from openai import OpenAI
+import tiktoken
 
 # Load environment variables from .env file
 load_dotenv()
@@ -494,6 +497,55 @@ def get_der_data(date: Optional[str] = None):
         "results": results
     }
 
+class TabData(BaseModel):
+    tab_name: str
+    data: Dict[str, Any]
+    timestamp: str
+
+@app.post("/save-tab-data")
+async def save_tab_data(tab_data: TabData):
+    """Save tab data to JSON file"""
+    try:
+        json_file_path = "today_current_data.json"
+
+        # Load existing data or create new
+        if os.path.exists(json_file_path):
+            with open(json_file_path, 'r') as f:
+                all_data = json.load(f)
+        else:
+            all_data = {
+                "last_updated": None,
+                "tabs": {}
+            }
+
+        # Update with new tab data
+        all_data["last_updated"] = tab_data.timestamp
+        all_data["tabs"][tab_data.tab_name] = {
+            "data": tab_data.data,
+            "timestamp": tab_data.timestamp
+        }
+
+        # Save back to file
+        with open(json_file_path, 'w') as f:
+            json.dump(all_data, f, indent=2)
+
+        return {"success": True, "message": f"Data saved for tab: {tab_data.tab_name}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.get("/get-saved-data")
+async def get_saved_data():
+    """Get all saved tab data"""
+    try:
+        json_file_path = "today_current_data.json"
+        if os.path.exists(json_file_path):
+            with open(json_file_path, 'r') as f:
+                return json.load(f)
+        else:
+            return {"message": "No saved data found"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/test-all")
 def test_all_endpoints():
     """Test all endpoints to see what data is available"""
@@ -657,6 +709,7 @@ async def get_realtime_fuel_mix():
                 "timestamp": datetime.now().isoformat()
             }
 
+
 @app.get("/realtime/all")
 async def get_all_realtime_data():
     """Get all real-time data from ERCOT"""
@@ -809,6 +862,216 @@ async def get_wind_power():
                 "error": str(e),
                 "timestamp": datetime.now().isoformat()
             }
+
+# ============================================
+# AI ASSISTANT ENDPOINTS
+# ============================================
+
+# Initialize OpenAI client
+openai_api_key = os.getenv("OPENAI_API_KEY", "")
+if openai_api_key and openai_api_key != "YOUR_OPENAI_API_KEY_HERE":
+    openai_client = OpenAI(api_key=openai_api_key)
+else:
+    openai_client = None
+
+# Cost tracking data
+AI_COST_FILE = "ai_cost_tracking.json"
+COST_PER_1M_INPUT = 0.05  # $0.05 per 1M input tokens for gpt-5-nano
+COST_PER_1M_OUTPUT = 0.40  # $0.40 per 1M output tokens for gpt-5-nano
+
+# Pydantic models for AI endpoints
+class ChatMessage(BaseModel):
+    message: str
+    context: Dict[str, Any]
+
+class ChatResponse(BaseModel):
+    response: str
+    tokens_used: Dict[str, int]
+    cost: float
+    timestamp: str
+
+def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
+    """Count tokens for a given text"""
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except:
+        encoding = tiktoken.get_encoding("cl100k_base")
+    return len(encoding.encode(text))
+
+def calculate_cost(input_tokens: int, output_tokens: int) -> float:
+    """Calculate cost based on GPT-5-nano pricing"""
+    input_cost = (input_tokens / 1_000_000) * COST_PER_1M_INPUT
+    output_cost = (output_tokens / 1_000_000) * COST_PER_1M_OUTPUT
+    return round(input_cost + output_cost, 6)
+
+def save_cost_data(tokens: Dict[str, int], cost: float, user_message: str = "", ai_response: str = ""):
+    """Save cost data and conversation to tracking file"""
+    try:
+        if os.path.exists(AI_COST_FILE):
+            with open(AI_COST_FILE, 'r', encoding='utf-8') as f:
+                cost_data = json.load(f)
+        else:
+            cost_data = {
+                "total_cost": 0,
+                "total_tokens": {"input": 0, "output": 0},
+                "sessions": []
+            }
+
+        # Update totals
+        cost_data["total_cost"] += cost
+        cost_data["total_tokens"]["input"] += tokens["input"]
+        cost_data["total_tokens"]["output"] += tokens["output"]
+
+        # Add session data with input/output messages
+        cost_data["sessions"].append({
+            "timestamp": datetime.now().isoformat(),
+            "tokens": tokens,
+            "cost": cost,
+            "user_message": user_message,
+            "ai_response": ai_response
+        })
+
+        # Keep only last 1000 sessions
+        if len(cost_data["sessions"]) > 1000:
+            cost_data["sessions"] = cost_data["sessions"][-1000:]
+
+        with open(AI_COST_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cost_data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Error saving cost data: {e}")
+
+def create_system_prompt(context: Dict[str, Any]) -> str:
+    """Create a system prompt with dashboard context"""
+    return f"""You are an AI assistant for the ERCOT Energy Dashboard. You help users understand Texas electricity grid data.
+
+Current Dashboard Context:
+- Timestamp: {context.get('timestamp', 'N/A')}
+- Active Tab: {context.get('current_tab', 'N/A')}
+- Grid Demand: {context.get('grid_demand', 'N/A')} MW
+- Available Capacity: {context.get('available_capacity', 'N/A')} MW
+- Renewable Percentage: {context.get('renewable_percentage', 'N/A')}%
+- Current Prices: {json.dumps(context.get('prices', {}), indent=2) if context.get('prices') else 'N/A'}
+- Outages: {json.dumps(context.get('outages', {}), indent=2) if context.get('outages') else 'N/A'}
+
+Provide helpful insights about:
+- Current grid conditions and stability
+- Price trends and anomalies
+- Renewable energy performance
+- Outage impacts
+- Demand response opportunities
+- Market conditions
+
+Be concise but informative. Use data from the context to support your answers."""
+
+@app.post("/ai/chat", response_model=ChatResponse)
+async def ai_chat(chat_message: ChatMessage):
+    """Chat with AI assistant about dashboard data"""
+    if not openai_client:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+
+    try:
+        # Create messages for OpenAI
+        system_prompt = create_system_prompt(chat_message.context)
+
+        # Count input tokens
+        input_text = system_prompt + chat_message.message
+        input_tokens = count_tokens(input_text)
+
+        # Call OpenAI API with GPT-5-nano using Responses API
+        print(f"[DEBUG] Calling GPT-5-nano with message: {chat_message.message[:100]}")
+
+        # Format the input with context
+        full_input = f"{system_prompt}\n\nUser: {chat_message.message}"
+
+        # Use Responses API for GPT-5-nano
+        response = openai_client.responses.create(
+            model="gpt-5-nano",
+            input=full_input,
+            text={"verbosity": "medium"}
+        )
+
+        # Extract response text from the Responses API format
+        print(f"[DEBUG] Raw response: {response}")
+        ai_response = ""
+
+        # Parse the GPT-5-nano response structure
+        if hasattr(response, 'output') and response.output:
+            for item in response.output:
+                # Look for ResponseOutputMessage type items
+                if hasattr(item, 'content') and item.content:
+                    for content in item.content:
+                        if hasattr(content, 'text'):
+                            ai_response += content.text
+
+        print(f"[DEBUG] AI response content: {ai_response[:200]}...")  # Show first 200 chars
+        output_tokens = count_tokens(ai_response) if ai_response else 0
+
+        # Calculate cost
+        tokens_used = {"input": input_tokens, "output": output_tokens}
+        cost = calculate_cost(input_tokens, output_tokens)
+
+        # Save cost data with input/output messages
+        save_cost_data(tokens_used, cost, chat_message.message, ai_response)
+
+        return ChatResponse(
+            response=ai_response,
+            tokens_used=tokens_used,
+            cost=cost,
+            timestamp=datetime.now().isoformat()
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/ai/cost-summary")
+async def get_cost_summary():
+    """Get AI usage cost summary"""
+    try:
+        if os.path.exists(AI_COST_FILE):
+            with open(AI_COST_FILE, 'r') as f:
+                cost_data = json.load(f)
+
+            # Calculate additional statistics
+            if cost_data["sessions"]:
+                # Daily cost (last 24 hours)
+                cutoff = datetime.now() - timedelta(days=1)
+                daily_sessions = [s for s in cost_data["sessions"]
+                                if datetime.fromisoformat(s["timestamp"]) > cutoff]
+                daily_cost = sum(s["cost"] for s in daily_sessions)
+
+                # Average cost per query
+                avg_cost = cost_data["total_cost"] / len(cost_data["sessions"])
+
+                cost_data["statistics"] = {
+                    "daily_cost": round(daily_cost, 6),
+                    "average_cost_per_query": round(avg_cost, 6),
+                    "total_queries": len(cost_data["sessions"])
+                }
+
+            return cost_data
+        else:
+            return {
+                "total_cost": 0,
+                "total_tokens": {"input": 0, "output": 0},
+                "sessions": [],
+                "statistics": {
+                    "daily_cost": 0,
+                    "average_cost_per_query": 0,
+                    "total_queries": 0
+                }
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/ai/clear-history")
+async def clear_ai_history():
+    """Clear AI conversation history and cost data"""
+    try:
+        if os.path.exists(AI_COST_FILE):
+            os.remove(AI_COST_FILE)
+        return {"success": True, "message": "AI history cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
