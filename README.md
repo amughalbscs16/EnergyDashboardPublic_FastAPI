@@ -1,209 +1,346 @@
-# ERCOT Energy Dashboard - Real-Time Texas Grid Analytics
+# ERCOT Energy Dashboard
 
-A comprehensive real-time energy dashboard for monitoring the Texas electricity grid through ERCOT (Electric Reliability Council of Texas) public APIs. This application provides live visualization of energy market data, generation mix, pricing, and grid conditions.
+A comprehensive real-time dashboard for monitoring Texas electricity grid data through the ERCOT (Electric Reliability Council of Texas) API. This application provides interactive visualizations, market insights, and AI-powered analysis of energy generation, demand, pricing, and distributed energy resources.
 
-## 🌟 Features
+![Dashboard Overview](./images/Overview.png)
 
-### Real-Time Market Data
-- **Live Grid Monitoring**: Current demand, capacity, and reserves
-- **Energy Pricing**: Real-time and day-ahead market prices with spread analysis
-- **Supply & Demand**: 24-hour forecasting with utilization metrics
-- **Physical Responsive Capability (PRC)**: Current and historical PRC values
+## Features
 
-### Generation Analytics
-- **Fuel Mix Visualization**: Real-time breakdown by source (Solar, Wind, Gas, Nuclear, Coal)
-- **Renewable Integration**: Solar and wind production tracking
-- **Generation Outages**: Planned vs unplanned outage monitoring
-- **Capacity Analysis**: Dispatchable vs renewable generation status
+- **Real-time ERCOT data integration** with live API feeds
+- **Interactive charts and visualizations** using Chart.js
+- **AI-powered energy assistant** with GPT-5-nano integration
+- **Multi-tab interface** for organized data exploration
+- **Responsive design** optimized for desktop and mobile
+- **Session history tracking** for AI conversations
+- **Cost monitoring** for API usage and AI interactions
 
-### Interactive Visualizations
-- **Dynamic Charts**: Powered by Chart.js with real-time updates
-- **Multi-Tab Interface**: Organized sections for different data categories
-- **Responsive Design**: Modern UI with gradient aesthetics
-- **Auto-Refresh**: Live data updates every few seconds
+## Application Tabs
 
-## 🚀 Quick Start
+### 1. Overview Tab
+The main dashboard providing a high-level view of the Texas electricity grid status.
+
+![Overview Tab](./images/Overview.png)
+
+**Key Features:**
+- **Current System Demand**: Real-time electricity demand across ERCOT region
+- **System Lambda**: Current marginal cost of electricity generation
+- **Generation Mix**: Live breakdown of energy sources (natural gas, wind, solar, nuclear, etc.)
+- **Real-time Pricing**: Current Settlement Point Prices (SPP) for major load zones
+- **Quick Stats Cards**: Summary metrics for grid performance and market conditions
+
+**Data Sources:**
+- System-wide demand and generation data
+- Real-time settlement point pricing
+- Generation resource mix by fuel type
+- System lambda (marginal pricing)
+
+### 2. Real-Time Grid Tab
+Live monitoring of grid operations and system conditions.
+
+![Real-Time Grid Tab](./images/Real_Time_Grid.png)
+
+**Key Features:**
+- **System Frequency**: Real-time grid frequency monitoring
+- **Transmission Status**: Live transmission line and substation data
+- **Emergency Procedures**: Grid emergency alerts and conservation notices
+- **Interchange Flows**: Power flows between ERCOT and neighboring grids
+- **System Inertia**: Grid stability and reliability metrics
+
+**Data Sources:**
+- Real-time system operational data
+- Transmission system status
+- Grid frequency measurements
+- Emergency response protocols
+
+### 3. All Generation Tab
+Comprehensive view of electricity generation across all resource types.
+
+![All Generation Tab](./images/All_Generation.png)
+
+**Key Features:**
+- **Generation by Fuel Type**: Real-time output from all generation sources
+- **Capacity Factors**: Efficiency metrics for renewable resources
+- **Generation Trends**: Historical patterns and forecasting
+- **Resource Availability**: Online/offline status of major generation units
+- **Environmental Impact**: Emissions tracking and renewable percentage
+
+**Data Sources:**
+- Real-time generation by resource type
+- Historical generation patterns
+- Generation resource outage schedules
+- Renewable energy forecasts
+
+### 4. Market Data Tab
+Detailed market pricing and economic analysis of electricity markets.
+
+![Market Data Tab](./images/Market_Data.png)
+
+**Key Features:**
+- **Hourly Price Charts**: 24-hour price trends for major trading hubs
+- **Load Zone Comparison**: Price variations across different ERCOT load zones
+- **Day-Ahead vs Real-Time**: Comparison of forecasted vs actual market prices
+- **Price Volatility Indicators**: Market stress and price spike detection
+- **Economic Dispatch Analysis**: Understanding of generation economics
+
+**Data Sources:**
+- Settlement Point Prices (SPP) for all load zones
+- Day-ahead market clearing prices
+- Real-time energy prices
+- Ancillary services pricing
+
+### 5. DER Resources Tab
+Analysis of distributed energy resources including solar, wind, and storage systems.
+
+![DER Resources Tab](./images/DER_Resources.png)
+
+**Key Features:**
+- **DER Mix Chart**: Breakdown of distributed energy resource types
+- **Solar Production Tracking**: Real-time and forecasted solar generation
+- **Wind Production Analysis**: Wind generation patterns and capacity factors
+- **DER Forecast Charts**: 24-hour ahead predictions for renewable output
+- **Grid Integration Metrics**: Impact of DER on grid stability and pricing
+
+**Data Sources:**
+- Distributed solar generation data
+- Wind generation forecasts and actuals
+- DER registration and capacity data
+- Grid integration studies
+
+### 6. Fuel Mix Tab
+Detailed analysis of generation fuel sources and energy portfolio composition.
+
+![Fuel Mix Tab](./images/Fuel_Mix.png)
+
+**Key Features:**
+- **Fuel Source Breakdown**: Real-time percentage of each fuel type
+- **Emissions Analysis**: Environmental impact by fuel source
+- **Fuel Cost Trends**: Economic analysis of different generation sources
+- **Carbon Intensity**: Grid carbon footprint tracking
+- **Renewable Penetration**: Clean energy percentage and trends
+
+**Data Sources:**
+- Generation by fuel type data
+- Fuel cost and availability data
+- Environmental impact metrics
+- Renewable energy certificates
+
+### 7. Outages Tab
+Comprehensive tracking of planned and unplanned generation outages.
+
+![Outages Tab](./images/Outages.png)
+
+**Key Features:**
+- **Current Outages**: Real-time status of offline generation units
+- **Planned Maintenance**: Scheduled outages and maintenance windows
+- **Forced Outages**: Unplanned outages and emergency shutdowns
+- **Capacity Impact**: Available vs unavailable generation capacity
+- **Outage Duration**: Historical outage patterns and recovery times
+
+**Data Sources:**
+- Generation resource outage schedules
+- Forced outage reports
+- Maintenance planning data
+- Unit availability status
+
+### 8. PRC (Physical Responsive Capability) Tab
+Analysis of grid flexibility and responsive capacity resources.
+
+![PRC Tab](./images/Physical_Responsive_Capability.png)
+
+**Key Features:**
+- **Responsive Reserve**: Available quick-response generation capacity
+- **Load Response**: Demand response participation and availability
+- **Regulation Services**: Frequency regulation capacity and deployment
+- **Spinning Reserve**: Online backup generation capacity
+- **Non-Spinning Reserve**: Offline but quickly available generation
+
+**Data Sources:**
+- Ancillary services market data
+- Responsive reserve deployments
+- Load response program participation
+- Regulation service performance
+
+### 9. Energy Prices Tab
+Comprehensive energy pricing analysis across all market segments.
+
+![Energy Prices Tab](./images/Energy_Prices.png)
+
+**Key Features:**
+- **Real-Time Prices**: Current energy prices by settlement point
+- **Historical Price Trends**: Long-term pricing patterns and analysis
+- **Price Forecasting**: Predictive models for energy price movements
+- **Congestion Analysis**: Transmission constraints and pricing impacts
+- **Basis Differential**: Price spreads between different market locations
+
+**Data Sources:**
+- Settlement point pricing data
+- Historical market clearing prices
+- Transmission congestion data
+- Load forecast and price correlation
+
+### 10. API Status Tab
+Real-time monitoring of ERCOT API endpoints and data feed health.
+
+![API Status Tab](./images/API_Status.png)
+
+**Key Features:**
+- **Endpoint Status**: Health monitoring of all ERCOT API services
+- **Data Freshness**: Last update timestamps for each data feed
+- **Response Times**: API performance and latency monitoring
+- **Error Tracking**: Failed requests and connection issues
+- **Service Availability**: Uptime statistics and reliability metrics
+
+**Data Sources:**
+- ERCOT API health checks
+- Internal monitoring systems
+- Response time measurements
+- Error logging and tracking
+
+### 11. Agentic AI Cost Tab
+Monitoring and analysis of AI assistant usage and associated costs.
+
+![Agentic AI Cost Tab](./images/AI_Cost.png)
+
+**Key Features:**
+- **Usage Analytics**: Token consumption and API call statistics
+- **Cost Breakdown**: Detailed cost analysis per conversation and query type
+- **Session History**: Complete conversation logs with cost tracking
+- **Usage Trends**: AI assistant utilization patterns over time
+- **Cost Optimization**: Insights for efficient AI usage and budget management
+
+**Data Sources:**
+- OpenAI API usage logs
+- Internal cost tracking systems
+- Session conversation history
+- Token consumption analytics
+
+**AI Assistant Capabilities:**
+- Multi-tab data analysis (can access data from all dashboard tabs)
+- Historical trend identification
+- Market condition interpretation
+- Generation efficiency analysis
+- Price forecasting insights
+- Renewable energy impact assessment
+
+**Example Queries:**
+- "What are the current trends in wind generation?"
+- "How do today's prices compare to historical averages?"
+- "What's driving the current generation mix?"
+- "Analyze the correlation between demand and pricing"
+
+## Technical Architecture
+
+### Backend (FastAPI)
+- **Framework**: FastAPI with Python
+- **API Integration**: ERCOT Public API client with authentication
+- **AI Integration**: OpenAI GPT-5-nano for intelligent analysis
+- **Data Processing**: Real-time data transformation and aggregation
+- **Session Management**: Conversation history and cost tracking
+
+### Frontend (Vanilla JavaScript)
+- **Visualization**: Chart.js for interactive charts and graphs
+- **UI Framework**: Custom CSS with responsive design
+- **Real-time Updates**: Automated data refresh and live updates
+- **Tab Navigation**: Multi-section interface for organized data access
+- **AI Interface**: Chat-based interaction with comprehensive data context
+
+### Data Sources
+- **ERCOT Public API**: Official Texas grid operator data
+- **Real-time Feeds**: Live generation, demand, and pricing data
+- **Historical Data**: Trend analysis and pattern recognition
+- **Weather Integration**: Solar and wind resource forecasting
+
+## Setup and Installation
 
 ### Prerequisites
-- Python 3.8 or higher
-- ERCOT API credentials ([Get them here](https://www.ercot.com/services/rq/public/public-api))
+- Python 3.8+
+- ERCOT API credentials (username, password, subscription key)
+- OpenAI API key for AI assistant functionality
 
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone https://github.com/amughalbscs16/EnergyDashboardRealDataPublic.git
-cd EnergyDashboardRealDataPublic
-```
-
-2. **Install Python dependencies**
-```bash
-pip install -r requirements.txt
-```
-
-3. **Configure API credentials**
-```bash
-cd ercot_explorer
-cp .env.example .env
-# Edit .env file with your ERCOT credentials
-```
-
-4. **Start the backend API server**
-```bash
-python backend_simple.py
-# Server runs on http://localhost:8000
-```
-
-5. **Start the frontend server** (in a new terminal)
-```bash
-python -m http.server 8080
-# Dashboard available at http://localhost:8080
-```
-
-6. **Access the dashboard**
-Open your browser and navigate to: `http://localhost:8080/dashboard.html`
-
-## 📋 Configuration
-
-### Environment Variables (.env)
-Create a `.env` file in the `ercot_explorer` directory with:
-
+### Environment Configuration
+1. Copy `.env.example` to `.env`
+2. Configure your API credentials:
 ```env
 # ERCOT API Configuration
 ERCOT_USERNAME=your-email@example.com
-ERCOT_PASSWORD=your-password
-ERCOT_SUBSCRIPTION_KEY=your-subscription-key
-ERCOT_AUTH_URL=https://ercotb2c.b2clogin.com/ercotb2c.onmicrosoft.com/B2C_1_PUBAPI-ROPC-FLOW/oauth2/v2.0/token
+ERCOT_PASSWORD=your-password-here
+ERCOT_SUBSCRIPTION_KEY=your-subscription-key-here
 
-# Server Configuration
-API_HOST=0.0.0.0
-API_PORT=8000
-FRONTEND_PORT=8080
+# OpenAI Configuration
+OPENAI_API_KEY=your-openai-api-key-here
 ```
 
-## 📁 Project Structure
-
-```
-EnergyDashboardRealDataPublic/
-├── ercot_explorer/
-│   ├── dashboard.html           # Main dashboard interface
-│   ├── backend_simple.py        # FastAPI backend server
-│   ├── test_all_endpoints.html  # API endpoint testing utility
-│   ├── test_connection.html     # Connection testing tool
-│   ├── test_energy_prices.html  # Energy pricing test interface
-│   ├── .env                     # Your credentials (not in repo)
-│   └── .env.example            # Template for environment variables
-├── requirements.txt            # Python dependencies
-├── README.md                  # Project documentation
-├── .gitignore                # Git ignore rules
-└── CLAUDE.md                 # AI assistant guidelines
+### Running the Application
+1. **Start the Backend Server**:
+```bash
+cd ercot_explorer
+python backend_simple.py
 ```
 
-## 🔌 API Endpoints
+2. **Start the Frontend Server**:
+```bash
+cd ercot_explorer
+python -m http.server 8080
+```
 
-### Real-Time Data
-- `GET /realtime/supply-demand` - Current grid supply and demand metrics
-- `GET /realtime/fuel-mix` - Real-time generation by fuel type
+3. **Access the Dashboard**:
+Open your browser to `http://localhost:8080/dashboard.html`
 
-### Public Data
-- `GET /public/generation-outages` - Current power plant outages
-- `GET /public/daily-prc` - Physical Responsive Capability data
-- `GET /public/solar-power-production` - Solar generation data
-- `GET /public/wind-power-production` - Wind generation data
+## API Integration
 
-### Additional Endpoints
-- `GET /dr-data` - Demand response data
-- `GET /der-data` - Distributed energy resources data
-- `GET /endpoints` - List all available endpoints
-- `GET /test-all` - Test all API endpoints
+### ERCOT Public API
+The application integrates with several ERCOT API endpoints:
+- **Real-time System Conditions**: Current demand and generation
+- **Settlement Point Prices**: Market pricing data
+- **Generation by Fuel Type**: Resource mix and output
+- **Load Forecasts**: Demand predictions
+- **Distributed Energy Resources**: DER capacity and generation
 
-## 📊 Dashboard Features
+### AI Assistant Integration
+- **Model**: GPT-5-nano for efficient and cost-effective analysis
+- **Context Awareness**: Access to all dashboard data for comprehensive analysis
+- **Session Persistence**: Conversation history and context retention
+- **Cost Tracking**: Detailed usage monitoring and cost analysis
 
-### Supply & Demand Tab
-- Real-time grid load (MW)
-- Available capacity and reserves
-- 24-hour demand forecast
-- Utilization percentage
+## Data Refresh and Updates
 
-### Generation Tab
-- Fuel mix pie chart
-- Renewable vs conventional breakdown
-- Real-time generation by source
-- Trend analysis over 24 hours
+- **Automatic Refresh**: Data updates every 5 minutes for real-time accuracy
+- **Manual Refresh**: Instant data updates via refresh buttons
+- **Error Handling**: Graceful degradation when API services are unavailable
+- **Cache Management**: Efficient data caching for improved performance
 
-### Outages Tab
-- Current outage summary
-- Planned vs unplanned analysis
-- Dispatchable vs renewable impacts
-- Historical outage trends
+## Usage Examples
 
-### PRC Tab
-- Current PRC value and status
-- Historical PRC trends
-- Daily and hourly patterns
-- Capacity adequacy indicators
+### Monitoring Grid Conditions
+1. Navigate to the **Overview** tab for current system status
+2. Check **Market Data** tab for pricing trends
+3. Use **Generation** tab to understand supply mix
+4. Monitor **DER** tab for renewable contribution
 
-### Energy Pricing Tab
-- Real-time LMP prices
-- Day-ahead market prices
-- Price spreads and volatility
-- Fuel-based marginal costs
+### AI-Powered Analysis
+1. Open the **AI Assistant** tab
+2. Select data sources (single tab or all tabs)
+3. Ask questions like:
+   - "What's causing today's price volatility?"
+   - "How efficient is wind generation today?"
+   - "Compare current demand to seasonal averages"
+4. Review session history for previous insights
 
-## 🛠️ Technologies Used
+## Troubleshooting
 
-### Backend
-- **FastAPI** - High-performance Python web framework
-- **HTTPX** - Async HTTP client for API calls
-- **Python-dotenv** - Environment variable management
-- **Uvicorn** - ASGI server for FastAPI
+### Common Issues
+- **API Authentication Errors**: Verify ERCOT credentials in `.env` file
+- **Data Not Loading**: Check internet connection and API service status
+- **AI Assistant Not Responding**: Verify OpenAI API key configuration
+- **Charts Not Displaying**: Ensure JavaScript is enabled in browser
 
-### Frontend
-- **Vanilla JavaScript** - No framework dependencies
-- **Chart.js** - Interactive data visualizations
-- **HTML5/CSS3** - Modern web standards
-- **Date-fns** - Date formatting utilities
+### Support
+For technical issues or feature requests, please check the application logs in the browser console or backend server output.
 
-### APIs
-- **ERCOT Public API** - Official Texas grid data source
-- **OAuth2** - Secure authentication flow
+## License
 
-## 🔒 Security
-
-- API credentials stored in `.env` file (excluded from version control)
-- CORS configured for localhost development
-- Token refresh mechanism for continuous operation
-- No sensitive data logged or exposed
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- ERCOT for providing public API access
-- Chart.js team for the visualization library
-- FastAPI community for the excellent framework
-
-## 📞 Support
-
-For issues, questions, or suggestions, please open an issue on GitHub.
-
-## 🔗 Links
-
-- **Repository**: [https://github.com/amughalbscs16/EnergyDashboardRealDataPublic](https://github.com/amughalbscs16/EnergyDashboardRealDataPublic)
-- **ERCOT API Documentation**: [https://www.ercot.com/services/rq/public/public-api](https://www.ercot.com/services/rq/public/public-api)
-- **Live Demo**: Deploy to your preferred hosting service
+This project is for educational and research purposes. Please ensure compliance with ERCOT API terms of service and OpenAI usage policies.
 
 ---
 
-**Note**: This dashboard uses real-time data from ERCOT's public API. Data accuracy and availability depend on ERCOT's services.
+**Note**: This dashboard provides real-time energy market data for informational purposes. Always consult official ERCOT sources for critical operational decisions.
