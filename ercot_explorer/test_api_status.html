@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Status Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #333; }
+        .test-btn { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .test-btn:hover { background: #0056b3; }
+        #results { margin-top: 20px; padding: 20px; background: #f5f5f5; border-radius: 5px; }
+        pre { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>API Status Debug Test</h1>
+        <button class="test-btn" onclick="testAPIStatus()">Test API Status Tab</button>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function testAPIStatus() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h3>Testing...</h3>';
+
+            try {
+                // Test if the dashboard loads
+                const dashboardResponse = await fetch('/dashboard.html');
+                const dashboardText = await dashboardResponse.text();
+
+                // Count API endpoints in the array
+                const apiArrayMatch = dashboardText.match(/const apiEndpoints = \[([\s\S]*?)\];/);
+                if (apiArrayMatch) {
+                    const apiArray = apiArrayMatch[1];
+                    const endpoints = apiArray.match(/\{ name:/g);
+                    const count = endpoints ? endpoints.length : 0;
+
+                    // Extract endpoint names
+                    const names = [];
+                    const nameMatches = apiArray.matchAll(/name: '([^']+)'/g);
+                    for (const match of nameMatches) {
+                        names.push(match[1]);
+                    }
+
+                    results.innerHTML = `
+                        <h3>Results:</h3>
+                        <p><strong>Total API Endpoints Found:</strong> ${count}</p>
+                        <p><strong>Endpoint Names:</strong></p>
+                        <ol>
+                            ${names.map(name => `<li>${name}</li>`).join('')}
+                        </ol>
+                        <p><strong>Raw Array:</strong></p>
+                        <pre>${apiArray.substring(0, 2000)}...</pre>
+                    `;
+
+                    // Now check if initializeAPIStatus is called
+                    const initCallFound = dashboardText.includes('initializeAPIStatus()');
+                    results.innerHTML += `<p><strong>initializeAPIStatus() call found:</strong> ${initCallFound}</p>`;
+
+                    // Check if API Status tab exists
+                    const tabFound = dashboardText.includes('id="api-status-content"');
+                    results.innerHTML += `<p><strong>API Status tab content found:</strong> ${tabFound}</p>`;
+
+                    // Check if apiStatusGrid exists
+                    const gridFound = dashboardText.includes('id="apiStatusGrid"');
+                    results.innerHTML += `<p><strong>API Status Grid found:</strong> ${gridFound}</p>`;
+                } else {
+                    results.innerHTML = '<h3>Error: Could not find apiEndpoints array in dashboard.html</h3>';
+                }
+
+            } catch (error) {
+                results.innerHTML = `<h3>Error:</h3><pre>${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>

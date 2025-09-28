@@ -47,7 +47,12 @@
       "Bash(start http://localhost:8080/test_energy_prices.html)",
       "Bash(git init:*)",
       "Bash(git remote add:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git remote set-url:*)"
     ],
     "deny": [],
     "ask": []
