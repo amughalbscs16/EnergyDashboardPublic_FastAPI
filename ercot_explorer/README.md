@@ -2,7 +2,7 @@
 
 A comprehensive real-time dashboard for monitoring Texas electricity grid data through the ERCOT (Electric Reliability Council of Texas) API. This application provides interactive visualizations, market insights, and AI-powered analysis of energy generation, demand, pricing, and distributed energy resources.
 
-![Dashboard Overview](./screenshots/dashboard-overview.png)
+![Dashboard Overview](../images/Overview.png)
 
 ## Features
 
@@ -19,7 +19,7 @@ A comprehensive real-time dashboard for monitoring Texas electricity grid data t
 ### 1. Overview Tab
 The main dashboard providing a high-level view of the Texas electricity grid status.
 
-![Overview Tab](./screenshots/overview-tab.png)
+![Overview Tab](../images/Overview.png)
 
 **Key Features:**
 - **Current System Demand**: Real-time electricity demand across ERCOT region
@@ -37,7 +37,7 @@ The main dashboard providing a high-level view of the Texas electricity grid sta
 ### 2. Real-Time Grid Tab
 Live monitoring of grid operations and system conditions.
 
-![Real-Time Grid Tab](./screenshots/realtime-grid-tab.png)
+![Real-Time Grid Tab](../images/Real_Time_Grid.png)
 
 **Key Features:**
 - **System Frequency**: Real-time grid frequency monitoring
@@ -55,7 +55,7 @@ Live monitoring of grid operations and system conditions.
 ### 3. All Generation Tab
 Comprehensive view of electricity generation across all resource types.
 
-![All Generation Tab](./screenshots/all-generation-tab.png)
+![All Generation Tab](../images/All_Generation.png)
 
 **Key Features:**
 - **Generation by Fuel Type**: Real-time output from all generation sources
@@ -73,7 +73,7 @@ Comprehensive view of electricity generation across all resource types.
 ### 4. Market Data Tab
 Detailed market pricing and economic analysis of electricity markets.
 
-![Market Data Tab](./screenshots/market-data-tab.png)
+![Market Data Tab](../images/Market_Data.png)
 
 **Key Features:**
 - **Hourly Price Charts**: 24-hour price trends for major trading hubs
@@ -91,7 +91,7 @@ Detailed market pricing and economic analysis of electricity markets.
 ### 5. DER Resources Tab
 Analysis of distributed energy resources including solar, wind, and storage systems.
 
-![DER Resources Tab](./screenshots/der-resources-tab.png)
+![DER Resources Tab](../images/DER_Resources.png)
 
 **Key Features:**
 - **DER Mix Chart**: Breakdown of distributed energy resource types
@@ -109,7 +109,7 @@ Analysis of distributed energy resources including solar, wind, and storage syst
 ### 6. Fuel Mix Tab
 Detailed analysis of generation fuel sources and energy portfolio composition.
 
-![Fuel Mix Tab](./screenshots/fuel-mix-tab.png)
+![Fuel Mix Tab](../images/Fuel_Mix.png)
 
 **Key Features:**
 - **Fuel Source Breakdown**: Real-time percentage of each fuel type
@@ -127,7 +127,7 @@ Detailed analysis of generation fuel sources and energy portfolio composition.
 ### 7. Outages Tab
 Comprehensive tracking of planned and unplanned generation outages.
 
-![Outages Tab](./screenshots/outages-tab.png)
+![Outages Tab](../images/Outages.png)
 
 **Key Features:**
 - **Current Outages**: Real-time status of offline generation units
@@ -145,7 +145,7 @@ Comprehensive tracking of planned and unplanned generation outages.
 ### 8. PRC (Physical Responsive Capability) Tab
 Analysis of grid flexibility and responsive capacity resources.
 
-![PRC Tab](./screenshots/prc-tab.png)
+![PRC Tab](../images/Physical_Responsive_Capability.png)
 
 **Key Features:**
 - **Responsive Reserve**: Available quick-response generation capacity
@@ -163,7 +163,7 @@ Analysis of grid flexibility and responsive capacity resources.
 ### 9. Energy Prices Tab
 Comprehensive energy pricing analysis across all market segments.
 
-![Energy Prices Tab](./screenshots/energy-prices-tab.png)
+![Energy Prices Tab](../images/Energy_Prices.png)
 
 **Key Features:**
 - **Real-Time Prices**: Current energy prices by settlement point
@@ -181,7 +181,7 @@ Comprehensive energy pricing analysis across all market segments.
 ### 10. API Status Tab
 Real-time monitoring of ERCOT API endpoints and data feed health.
 
-![API Status Tab](./screenshots/api-status-tab.png)
+![API Status Tab](../images/API_Status.png)
 
 **Key Features:**
 - **Endpoint Status**: Health monitoring of all ERCOT API services
@@ -199,7 +199,7 @@ Real-time monitoring of ERCOT API endpoints and data feed health.
 ### 11. Agentic AI Cost Tab
 Monitoring and analysis of AI assistant usage and associated costs.
 
-![Agentic AI Cost Tab](./screenshots/ai-cost-tab.png)
+![Agentic AI Cost Tab](../images/AI_Cost.png)
 
 **Key Features:**
 - **Usage Analytics**: Token consumption and API call statistics
