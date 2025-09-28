@@ -32,8 +32,8 @@ app.add_middleware(
 
 # ERCOT API Configuration
 ERCOT_CONFIG = {
-    "username": "your.email@example.com",
-    "password": "YOUR_PASSWORD_HERE",
+    "username": os.getenv("ERCOT_USERNAME"),
+    "password": os.getenv("ERCOT_PASSWORD"),
     "subscription_key": "YOUR_SUBSCRIPTION_KEY_HERE",
     "auth_url": "https://ercotb2c.b2clogin.com/ercotb2c.onmicrosoft.com/B2C_1_PUBAPI-ROPC-FLOW/oauth2/v2.0/token",
     "client_id": "fec253ea-0d06-4272-a5e6-b478baeecd70",
