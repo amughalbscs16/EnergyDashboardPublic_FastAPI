@@ -1,0 +1,165 @@
+# Environment and Configuration Files
+.env
+.env.local
+.env.production
+.env.staging
+*.env
+
+# AI Conversation and Session Data
+ai_conversations.json
+ai_sessions.json
+conversation_history.json
+session_history.json
+chat_history.json
+ai_cost_data.json
+usage_logs.json
+conversations/
+sessions/
+chat_logs/
+ai_logs/
+
+# Local Snapshots and Screenshots
+screenshots/
+snapshots/
+images/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.svg
+*.webp
+
+# Log Files
+*.log
+logs/
+debug.log
+error.log
+access.log
+api.log
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+database/
+db/
+
+# Cache and Temporary Files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Node.js Dependencies (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Python Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.ENV/
+
+# Backup Files
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+
+# API Keys and Credentials (additional safety)
+*key.txt
+*secret.txt
+*password.txt
+credentials.json
+auth.json
+config.json
+
+# Cost and Usage Tracking Files
+cost_tracking.json
+usage_statistics.json
+billing_data.json
+token_usage.json
+
+# Local Development Files
+local/
+tmp/
+temp/
+.tmp/
+.temp/
+
+# System Files
+.system
+.hidden
+*.tmp
+
+# Documentation Build Files
+docs/_build/
+site/
+
+# Coverage Reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebooks Checkpoints
+.ipynb_checkpoints
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# Custom Application Files
+user_data/
+personal/
+private/
+sensitive/

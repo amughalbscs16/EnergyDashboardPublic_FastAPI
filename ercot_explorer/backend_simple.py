@@ -904,8 +904,8 @@ def calculate_cost(input_tokens: int, output_tokens: int) -> float:
     output_cost = (output_tokens / 1_000_000) * COST_PER_1M_OUTPUT
     return round(input_cost + output_cost, 6)
 
-def save_cost_data(tokens: Dict[str, int], cost: float, user_message: str = "", ai_response: str = ""):
-    """Save cost data and conversation to tracking file"""
+def save_cost_data(tokens: Dict[str, int], cost: float, user_message: str = "", ai_response: str = "", context: Dict[str, Any] = None):
+    """Save cost data, conversation, and context to tracking file"""
     try:
         if os.path.exists(AI_COST_FILE):
             with open(AI_COST_FILE, 'r', encoding='utf-8') as f:
@@ -922,14 +922,20 @@ def save_cost_data(tokens: Dict[str, int], cost: float, user_message: str = "", 
         cost_data["total_tokens"]["input"] += tokens["input"]
         cost_data["total_tokens"]["output"] += tokens["output"]
 
-        # Add session data with input/output messages
-        cost_data["sessions"].append({
+        # Add session data with input/output messages and context
+        session_data = {
             "timestamp": datetime.now().isoformat(),
             "tokens": tokens,
             "cost": cost,
             "user_message": user_message,
             "ai_response": ai_response
-        })
+        }
+
+        # Add context if provided
+        if context:
+            session_data["context"] = context
+
+        cost_data["sessions"].append(session_data)
 
         # Keep only last 1000 sessions
         if len(cost_data["sessions"]) > 1000:
@@ -942,11 +948,45 @@ def save_cost_data(tokens: Dict[str, int], cost: float, user_message: str = "", 
 
 def create_system_prompt(context: Dict[str, Any]) -> str:
     """Create a system prompt with dashboard context"""
-    return f"""You are an AI assistant for the ERCOT Energy Dashboard. You help users understand Texas electricity grid data.
+    prompt = f"""You are an AI assistant for the ERCOT Energy Dashboard. You help users understand Texas electricity grid data, including analyzing trends from charts and visualizations.
 
 Current Dashboard Context:
 - Timestamp: {context.get('timestamp', 'N/A')}
 - Active Tab: {context.get('current_tab', 'N/A')}
+"""
+
+    # Add current tab data if available
+    if context.get('current_tab_data'):
+        tab_data = context.get('current_tab_data')
+
+        # Handle chart data separately if present
+        if 'charts' in tab_data and tab_data['charts']:
+            prompt += "\nAvailable Charts and Trends:\n"
+            charts_data = tab_data['charts']
+            for chart_name, chart_info in charts_data.items():
+                prompt += f"\n{chart_name}:\n"
+                if 'labels' in chart_info:
+                    prompt += f"  Time/Categories: {chart_info['labels'][:10]}{'...' if len(chart_info['labels']) > 10 else ''}\n"
+                if 'datasets' in chart_info:
+                    for dataset in chart_info['datasets'][:3]:  # Limit to first 3 datasets
+                        if 'label' in dataset and 'data' in dataset:
+                            data = dataset['data'][:10] if dataset['data'] else []
+                            prompt += f"  {dataset['label']}: {data}{'...' if len(dataset.get('data', [])) > 10 else ''}\n"
+
+            # Remove charts from tab_data for regular display
+            tab_data_without_charts = {k: v for k, v in tab_data.items() if k != 'charts'}
+            prompt += f"\nCurrent Tab Metrics:\n{json.dumps(tab_data_without_charts, indent=2)[:1500]}\n"
+        else:
+            prompt += f"\nCurrent Tab Data:\n{json.dumps(tab_data, indent=2)[:2000]}\n"
+
+    # Add additional selected data sources
+    if context.get('additional_data'):
+        prompt += "\nAdditional Data Sources:\n"
+        for data_type, data in context.get('additional_data', {}).items():
+            prompt += f"\n{data_type.upper()} Data:\n{json.dumps(data, indent=2)[:1000]}\n"
+
+    # Add backward compatibility data
+    prompt += f"""
 - Grid Demand: {context.get('grid_demand', 'N/A')} MW
 - Available Capacity: {context.get('available_capacity', 'N/A')} MW
 - Renewable Percentage: {context.get('renewable_percentage', 'N/A')}%
@@ -960,8 +1000,22 @@ Provide helpful insights about:
 - Outage impacts
 - Demand response opportunities
 - Market conditions
+- Trend analysis from chart data (when available)
+- Historical patterns and forecasts (when chart data is provided)
+- Data correlations and relationships visible in the charts
 
-Be concise but informative. Use data from the context to support your answers."""
+When chart data is available, analyze:
+- Trends over time (increasing, decreasing, stable)
+- Peak and trough values
+- Patterns and cycles
+- Comparisons between different data series
+- Notable anomalies or outliers
+
+Be detailed and thorough in your analysis now that you can provide longer responses (up to 10,000 tokens).
+Use data from the context to support your answers. Focus on the data sources that have been specifically included in the context.
+When analyzing charts, reference specific data points and time periods to support your insights."""
+
+    return prompt
 
 @app.post("/ai/chat", response_model=ChatResponse)
 async def ai_chat(chat_message: ChatMessage):
@@ -987,11 +1041,11 @@ async def ai_chat(chat_message: ChatMessage):
         response = openai_client.responses.create(
             model="gpt-5-nano",
             input=full_input,
-            text={"verbosity": "medium"}
+            text={"format": {"type": "text"}}
         )
 
         # Extract response text from the Responses API format
-        print(f"[DEBUG] Raw response: {response}")
+        # Debug print removed to avoid encoding issues
         ai_response = ""
 
         # Parse the GPT-5-nano response structure
@@ -1010,8 +1064,8 @@ async def ai_chat(chat_message: ChatMessage):
         tokens_used = {"input": input_tokens, "output": output_tokens}
         cost = calculate_cost(input_tokens, output_tokens)
 
-        # Save cost data with input/output messages
-        save_cost_data(tokens_used, cost, chat_message.message, ai_response)
+        # Save cost data with input/output messages and context
+        save_cost_data(tokens_used, cost, chat_message.message, ai_response, chat_message.context)
 
         return ChatResponse(
             response=ai_response,
@@ -1021,6 +1075,9 @@ async def ai_chat(chat_message: ChatMessage):
         )
 
     except Exception as e:
+        print(f"[ERROR] Chat endpoint failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/ai/cost-summary")
@@ -1028,7 +1085,7 @@ async def get_cost_summary():
     """Get AI usage cost summary"""
     try:
         if os.path.exists(AI_COST_FILE):
-            with open(AI_COST_FILE, 'r') as f:
+            with open(AI_COST_FILE, 'r', encoding='utf-8') as f:
                 cost_data = json.load(f)
 
             # Calculate additional statistics

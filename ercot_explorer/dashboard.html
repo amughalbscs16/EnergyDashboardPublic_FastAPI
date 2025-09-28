@@ -1281,6 +1281,34 @@
         <div class="chat-messages" id="chatMessages"></div>
         <div class="typing-indicator" id="typingIndicator">AI is thinking...</div>
         <div class="chat-input-container">
+            <!-- Data Context Selector -->
+            <div style="margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #666;">Data Context</div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="flex: 1;">
+                        <div id="currentTabContext" style="font-size: 11px; color: #1e3c72; margin-bottom: 3px;">
+                            <strong>Current Tab:</strong> <span id="currentTabName">Overview</span> (auto-included)
+                        </div>
+                        <select id="additionalDataContext" multiple style="width: 100%; height: 60px; font-size: 11px; border: 1px solid #ddd; border-radius: 3px;" onchange="updateDataContextInfo()">
+                            <option value="grid">Real-Time Grid Data</option>
+                            <option value="generation">Generation Data</option>
+                            <option value="market">Market Prices</option>
+                            <option value="der">DER Resources</option>
+                            <option value="fuel">Fuel Mix</option>
+                            <option value="outages">Outages</option>
+                            <option value="prc">PRC Data</option>
+                            <option value="prices">Energy Prices</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                        <button onclick="clearDataContext()" style="padding: 5px 10px; font-size: 11px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">Clear</button>
+                        <button onclick="selectAllDataContext()" style="padding: 5px 10px; font-size: 11px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">All</button>
+                    </div>
+                </div>
+                <div id="dataContextInfo" style="margin-top: 5px; font-size: 10px; color: #999;">
+                    Hold Ctrl/Cmd to select multiple data sources
+                </div>
+            </div>
             <input type="text" class="chat-input" id="chatInput" placeholder="Ask about grid conditions, prices, or energy data..." onkeypress="if(event.key==='Enter') sendMessage()" oninput="updateCharCount()">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
                 <div class="char-counter" id="charCounter" style="font-size: 11px; color: #666;">0 characters</div>
@@ -1333,6 +1361,9 @@
                 content.classList.remove('active');
             });
             document.getElementById(tabName).classList.add('active');
+
+            // Update current tab display in chat context
+            updateCurrentTabDisplay();
 
             // Load data for the selected tab
             loadTabData(tabName);
@@ -2211,6 +2242,10 @@
                     }
                 }
             });
+
+            // Store in global charts object
+            if (!window.charts) window.charts = {};
+            window.charts.derMix = derMixChart;
         }
 
         function updateDERForecastChart(solarData, windData) {
@@ -2332,6 +2367,10 @@
                     }
                 }
             });
+
+            // Store in global charts object
+            if (!window.charts) window.charts = {};
+            window.charts.derForecast = derForecastChart;
         }
 
         function updateSolarProductionChart(solarData) {
@@ -2393,6 +2432,10 @@
                     }
                 }
             });
+
+            // Store in global charts object
+            if (!window.charts) window.charts = {};
+            window.charts.solarProduction = solarProductionChart;
         }
 
         function updateWindProductionChart(windData) {
@@ -2454,6 +2497,10 @@
                     }
                 }
             });
+
+            // Store in global charts object
+            if (!window.charts) window.charts = {};
+            window.charts.windProduction = windProductionChart;
         }
 
         function updateDERMarketData(prcData, derTotal, totalGeneration) {
@@ -5315,13 +5362,60 @@
         let chatMessages = [];
         let costTrendChart = null;
         let currentSessions = []; // Store current sessions data for modal display
+        let cachedAPIData = {}; // Cache for API data
 
         function toggleChat() {
             const chatInterface = document.getElementById('aiChatInterface');
             if (chatInterface.style.display === 'none' || !chatInterface.style.display) {
                 chatInterface.style.display = 'flex';
+                updateCurrentTabDisplay();
             } else {
                 chatInterface.style.display = 'none';
+            }
+        }
+
+        function clearDataContext() {
+            document.getElementById('additionalDataContext').selectedIndex = -1;
+            updateDataContextInfo();
+        }
+
+        function selectAllDataContext() {
+            const select = document.getElementById('additionalDataContext');
+            for (let i = 0; i < select.options.length; i++) {
+                select.options[i].selected = true;
+            }
+            updateDataContextInfo();
+        }
+
+        function updateCurrentTabDisplay() {
+            const tabNameSpan = document.getElementById('currentTabName');
+            const tabNames = {
+                'overview': 'Overview',
+                'realtime': 'Real-Time Grid',
+                'renewable': 'All Generation',
+                'market': 'Market Data',
+                'der': 'DER Resources',
+                'fuel': 'Fuel Mix',
+                'outages': 'Outages',
+                'prc': 'PRC',
+                'energy-prices': 'Energy Prices',
+                'api-status': 'API Status',
+                'ai-cost': 'AI Cost'
+            };
+            if (tabNameSpan) {
+                tabNameSpan.textContent = tabNames[currentTab] || currentTab;
+            }
+        }
+
+        function updateDataContextInfo() {
+            const select = document.getElementById('additionalDataContext');
+            const selected = Array.from(select.selectedOptions).map(opt => opt.text);
+            const info = document.getElementById('dataContextInfo');
+
+            if (selected.length > 0) {
+                info.innerHTML = `<strong>Additional data:</strong> ${selected.join(', ')}`;
+            } else {
+                info.textContent = 'Hold Ctrl/Cmd to select multiple data sources';
             }
         }
 
@@ -5365,8 +5459,11 @@
             // Show typing indicator
             document.getElementById('typingIndicator').classList.add('active');
 
+            // Update context info display
+            updateDataContextInfo();
+
             // Gather dashboard context
-            const context = gatherDashboardContext();
+            const context = await gatherDashboardContext();
 
             try {
                 const response = await fetch(`${API_BASE}/ai/chat`, {
@@ -5415,34 +5512,310 @@
             chatMessages.push({role, content, timestamp: new Date()});
         }
 
-        function gatherDashboardContext() {
-            const context = {
-                timestamp: new Date().toISOString(),
-                current_tab: currentTab
-            };
-
-            // Try to gather current data from visible elements
-            try {
-                // Grid demand
-                const demandElem = document.getElementById('currentDemand');
-                if (demandElem) context.grid_demand = parseInt(demandElem.textContent.replace(/[^0-9]/g, '')) || 0;
-
-                // Available capacity
-                const capacityElem = document.getElementById('availableCapacity');
-                if (capacityElem) context.available_capacity = parseInt(capacityElem.textContent.replace(/[^0-9]/g, '')) || 0;
-
-                // Renewable percentage
-                const renewableElem = document.getElementById('renewableGeneration');
-                if (renewableElem) context.renewable_percentage = parseFloat(renewableElem.textContent.replace(/[^0-9.]/g, '')) || 0;
-
-                // Get saved tab data if available
-                if (window.lastTabData) {
-                    context.tab_data = window.lastTabData;
-                }
-            } catch (e) {
-                console.error('Error gathering context:', e);
+        async function fetchAPIDataForContext(dataType) {
+            // Check cache first (5 minute expiry)
+            const cacheKey = dataType;
+            const cached = cachedAPIData[cacheKey];
+            if (cached && (Date.now() - cached.timestamp < 300000)) {
+                console.log(`Using cached ${dataType} data`);
+                return cached.data;
             }
 
+            const endpoints = {
+                'grid': '/grid/status',
+                'generation': '/renewable/current',
+                'market': '/prices/dam',
+                'der': '/der/current',
+                'fuel': '/fuel-mix/current',
+                'outages': '/outages/current',
+                'prc': '/constraints/realtime',
+                'prices': '/prices/spp-hourly'
+            };
+
+            const endpoint = endpoints[dataType];
+            if (!endpoint) {
+                console.warn(`No endpoint for data type: ${dataType}`);
+                return null;
+            }
+
+            try {
+                console.log(`Fetching ${dataType} data from ${API_BASE}${endpoint}`);
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`Successfully fetched ${dataType} data:`, data);
+                    // Cache the data
+                    cachedAPIData[cacheKey] = {
+                        data: data,
+                        timestamp: Date.now()
+                    };
+                    return data;
+                } else {
+                    console.error(`Failed to fetch ${dataType}: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error(`Failed to fetch ${dataType} data:`, error);
+            }
+            return null;
+        }
+
+        // New function to get ALL charts data from ALL tabs
+        function getAllChartsData() {
+            const allChartData = {};
+
+            // Collect data from ALL chart instances in the global charts object
+            if (window.charts) {
+                Object.keys(charts).forEach(chartName => {
+                    if (charts[chartName] && charts[chartName].data) {
+                        const chart = charts[chartName];
+                        allChartData[chartName] = {
+                            type: chart.config.type,
+                            labels: chart.data.labels || [],
+                            datasets: (chart.data.datasets || []).map(ds => ({
+                                label: ds.label,
+                                data: ds.data,
+                                backgroundColor: ds.backgroundColor,
+                                borderColor: ds.borderColor
+                            }))
+                        };
+                    }
+                });
+            }
+
+            // Also collect from standalone chart variables
+            const standaloneCharts = {
+                'derMix': derMixChart,
+                'derForecast': derForecastChart,
+                'solarProduction': solarProductionChart,
+                'windProduction': windProductionChart,
+                'costTrend': costTrendChart
+            };
+
+            Object.keys(standaloneCharts).forEach(chartName => {
+                const chart = standaloneCharts[chartName];
+                if (chart && chart.data && !allChartData[chartName]) {
+                    allChartData[chartName] = {
+                        type: chart.config.type,
+                        labels: chart.data.labels || [],
+                        datasets: (chart.data.datasets || []).map(ds => ({
+                            label: ds.label,
+                            data: ds.data,
+                            backgroundColor: ds.backgroundColor,
+                            borderColor: ds.borderColor
+                        }))
+                    };
+                }
+            });
+
+            return allChartData;
+        }
+
+        async function getCurrentTabData() {
+            // Try to get API data for the current tab first
+            const tabToEndpoint = {
+                'realtime': 'grid',
+                'renewable': 'generation',
+                'market': 'market',
+                'der': 'der',
+                'fuel': 'fuel',
+                'outages': 'outages',
+                'prc': 'prc',
+                'energy-prices': 'prices'
+            };
+
+            const dataType = tabToEndpoint[currentTab];
+            let apiData = null;
+            if (dataType) {
+                apiData = await fetchAPIDataForContext(dataType);
+            }
+
+            // ALWAYS gather ALL visible data from dashboard regardless of tab
+            const visibleData = {};
+            try {
+                // Collect ALL metric card data from the page
+                const allMetrics = [
+                    // Overview metrics
+                    { id: 'currentDemand', key: 'grid_demand' },
+                    { id: 'currentPrice', key: 'current_price' },
+                    { id: 'availableCapacity', key: 'available_capacity' },
+                    { id: 'renewablePercentage', key: 'renewable_percentage' },
+                    { id: 'totalOutages', key: 'total_outages' },
+                    { id: 'forecastAccuracy', key: 'forecast_accuracy' },
+                    // Generation metrics
+                    { id: 'renewableGeneration', key: 'renewable_generation' },
+                    { id: 'thermalGeneration', key: 'thermal_generation' },
+                    { id: 'nuclearGeneration', key: 'nuclear_generation' },
+                    // Price metrics
+                    { id: 'sppAverage', key: 'spp_average' },
+                    { id: 'rtordpaAverage', key: 'rtordpa_average' },
+                    { id: 'damPrice', key: 'dam_price' },
+                    // DER metrics
+                    { id: 'derCapacity', key: 'der_capacity' },
+                    { id: 'derActive', key: 'der_active' },
+                    { id: 'derAvailable', key: 'der_available' },
+                    // Outage metrics
+                    { id: 'plannedOutages', key: 'planned_outages' },
+                    { id: 'unplannedOutages', key: 'unplanned_outages' },
+                    { id: 'outagesByType', key: 'outages_by_type' },
+                    // Constraint metrics
+                    { id: 'totalConstraints', key: 'total_constraints' },
+                    { id: 'activeConstraints', key: 'active_constraints' },
+                    { id: 'congestionCost', key: 'congestion_cost' }
+                ];
+
+                // Collect all available metrics
+                allMetrics.forEach(metric => {
+                    const elem = document.getElementById(metric.id);
+                    if (elem && elem.textContent && elem.textContent.trim() !== 'N/A' && elem.textContent.trim() !== '') {
+                        visibleData[metric.key] = elem.textContent.trim();
+                    }
+                });
+
+                // Collect detail/subtitle text
+                const detailIds = [
+                    'demandDetails', 'priceDetails', 'capacityDetails', 'renewableDetails',
+                    'totalOutagesDetails', 'forecastDetails', 'renewableBreakdown',
+                    'thermalBreakdown', 'nuclearDetails', 'plannedOutagesBreakdown',
+                    'unplannedOutagesBreakdown', 'outagesTypeBreakdown'
+                ];
+
+                detailIds.forEach(id => {
+                    const elem = document.getElementById(id);
+                    if (elem && elem.textContent && elem.textContent.trim()) {
+                        visibleData[id] = elem.textContent.trim();
+                    }
+                });
+
+                // Get ALL charts data from ALL tabs using comprehensive function
+                const allChartsData = getAllChartsData();
+                if (Object.keys(allChartsData).length > 0) {
+                    visibleData.charts = allChartsData;
+                    console.log(`Collected ${Object.keys(allChartsData).length} charts with data`);
+                }
+
+                console.log('Collected all visible dashboard data:', visibleData);
+            } catch (e) {
+                console.error('Error gathering visible data:', e);
+            }
+
+            // Combine API data and visible data
+            if (apiData && Object.keys(visibleData).length > 0) {
+                return { api_data: apiData, dashboard_data: visibleData };
+            } else if (apiData) {
+                return apiData;
+            } else if (Object.keys(visibleData).length > 0) {
+                return visibleData;
+            }
+
+            return null;
+        }
+
+        async function gatherDashboardContext() {
+            console.log('Gathering dashboard context...');
+            const context = {
+                timestamp: new Date().toISOString(),
+                current_tab: currentTab,
+                additional_data: {}
+            };
+
+            // Get current tab data
+            console.log(`Fetching data for current tab: ${currentTab}`);
+            const currentTabData = await getCurrentTabData();
+            if (currentTabData) {
+                context.current_tab_data = currentTabData;
+                console.log('Current tab data:', currentTabData);
+            } else {
+                console.log('No data available for current tab');
+            }
+
+            // Get selected additional data
+            const select = document.getElementById('additionalDataContext');
+            if (select) {
+                const selectedOptions = Array.from(select.selectedOptions).map(opt => opt.value);
+                console.log('Selected additional data sources:', selectedOptions);
+
+                // Fetch additional data in parallel
+                const dataPromises = selectedOptions.map(async (dataType) => {
+                    const data = await fetchAPIDataForContext(dataType);
+                    if (data) {
+                        context.additional_data[dataType] = data;
+                        console.log(`Added ${dataType} data to context`);
+                    }
+                });
+
+                await Promise.all(dataPromises);
+                console.log('Additional data loaded:', Object.keys(context.additional_data));
+
+                // If "all" tabs selected, ensure we include ALL chart data
+                if (selectedOptions.includes('all')) {
+                    const allChartsData = getAllChartsData();
+                    context.all_charts_data = allChartsData;
+                    console.log(`Added ALL charts data (${Object.keys(allChartsData).length} charts) to context`);
+                }
+            }
+
+            // Always include ALL chart data regardless of selection for comprehensive context
+            const allChartsData = getAllChartsData();
+            if (Object.keys(allChartsData).length > 0 && !context.all_charts_data) {
+                context.all_charts_data = allChartsData;
+                console.log(`Added ${Object.keys(allChartsData).length} charts to context`);
+            }
+
+            // Also add parsed numeric values for backward compatibility
+            try {
+                // Parse grid demand from text like "52.8 GW" or "52,800 MW"
+                const demandElem = document.getElementById('currentDemand');
+                if (demandElem && demandElem.textContent !== 'N/A') {
+                    const match = demandElem.textContent.match(/([\d,\.]+)\s*(GW|MW)/i);
+                    if (match) {
+                        let value = parseFloat(match[1].replace(/,/g, ''));
+                        if (match[2].toUpperCase() === 'GW') {
+                            value = value * 1000; // Convert GW to MW
+                        }
+                        context.grid_demand = Math.round(value);
+                    }
+                }
+
+                // Parse available capacity
+                const capacityElem = document.getElementById('availableCapacity');
+                if (capacityElem && capacityElem.textContent !== 'N/A') {
+                    const match = capacityElem.textContent.match(/([\d,\.]+)\s*(GW|MW)/i);
+                    if (match) {
+                        let value = parseFloat(match[1].replace(/,/g, ''));
+                        if (match[2].toUpperCase() === 'GW') {
+                            value = value * 1000;
+                        }
+                        context.available_capacity = Math.round(value);
+                    }
+                }
+
+                // Parse renewable percentage
+                const renewableElem = document.getElementById('renewablePercentage');
+                if (renewableElem && renewableElem.textContent !== 'N/A') {
+                    const match = renewableElem.textContent.match(/([\d\.]+)/);
+                    if (match) {
+                        context.renewable_percentage = parseFloat(match[1]);
+                    }
+                }
+
+                // Collect price data
+                context.prices = {
+                    spp: document.getElementById('sppAverage')?.textContent || 'N/A',
+                    rtordpa: document.getElementById('rtordpaAverage')?.textContent || 'N/A',
+                    dam: document.getElementById('damPrice')?.textContent || 'N/A'
+                };
+
+                // Collect outage data
+                context.outages = {
+                    total: document.getElementById('totalOutages')?.textContent || 'N/A',
+                    planned: document.getElementById('plannedOutages')?.textContent || 'N/A',
+                    unplanned: document.getElementById('unplannedOutages')?.textContent || 'N/A'
+                };
+            } catch (e) {
+                console.error('Error parsing numeric values:', e);
+            }
+
+            console.log('Final context being sent:', context);
             return context;
         }
 
@@ -5531,6 +5904,10 @@
                     }
                 }
             });
+
+            // Store in global charts object
+            if (!window.charts) window.charts = {};
+            window.charts.costTrend = costTrendChart;
         }
 
         async function clearAIHistory() {
@@ -5568,6 +5945,73 @@
             document.getElementById('modalCost').textContent = `$${session.cost.toFixed(6)}`;
             document.getElementById('modalUserMessage').textContent = session.user_message;
             document.getElementById('modalAiResponse').textContent = session.ai_response;
+
+            // Show context data if available
+            const contextSection = document.getElementById('contextSection');
+            const contextDataElement = document.getElementById('modalContextData');
+
+            if (session.context) {
+                contextSection.style.display = 'block';
+
+                // Format context data for better readability
+                let formattedContext = '';
+
+                // Show timestamp and current tab
+                if (session.context.timestamp) {
+                    formattedContext += `Timestamp: ${new Date(session.context.timestamp).toLocaleString()}\n`;
+                }
+                if (session.context.current_tab) {
+                    formattedContext += `Current Tab: ${session.context.current_tab}\n\n`;
+                }
+
+                // Show current tab data
+                if (session.context.current_tab_data) {
+                    formattedContext += '=== Current Tab Data ===\n';
+                    const tabData = session.context.current_tab_data;
+
+                    if (tabData.visible_data) {
+                        formattedContext += '\nVisible Metrics:\n';
+                        for (const [key, value] of Object.entries(tabData.visible_data)) {
+                            if (key === 'charts') {
+                                formattedContext += `  Charts: ${Object.keys(value).length} chart(s) with data\n`;
+                            } else if (value !== null && value !== undefined && value !== 'N/A') {
+                                formattedContext += `  ${key}: ${value}\n`;
+                            }
+                        }
+                    }
+
+                    if (tabData.tab_name) {
+                        formattedContext += `\nTab: ${tabData.tab_name}\n`;
+                    }
+                }
+
+                // Show additional data sources
+                if (session.context.additional_data && session.context.additional_data.length > 0) {
+                    formattedContext += '\n=== Additional Data Sources ===\n';
+                    session.context.additional_data.forEach(source => {
+                        formattedContext += `  - ${source}\n`;
+                    });
+                }
+
+                // Show any other context data
+                const otherKeys = Object.keys(session.context).filter(key =>
+                    !['timestamp', 'current_tab', 'current_tab_data', 'additional_data'].includes(key)
+                );
+
+                if (otherKeys.length > 0) {
+                    formattedContext += '\n=== Other Context Data ===\n';
+                    otherKeys.forEach(key => {
+                        const value = session.context[key];
+                        if (value !== null && value !== undefined) {
+                            formattedContext += `  ${key}: ${JSON.stringify(value)}\n`;
+                        }
+                    });
+                }
+
+                contextDataElement.textContent = formattedContext || JSON.stringify(session.context, null, 2);
+            } else {
+                contextSection.style.display = 'none';
+            }
 
             modal.style.display = 'block';
         }
@@ -5626,6 +6070,13 @@
                     <h3>AI Response</h3>
                     <div class="message-box ai-message">
                         <pre id="modalAiResponse"></pre>
+                    </div>
+                </div>
+
+                <div class="conversation-section" id="contextSection" style="display: none;">
+                    <h3>Context Data Sent</h3>
+                    <div class="message-box context-data" style="max-height: 400px; overflow-y: auto; background: #f5f5f5;">
+                        <pre id="modalContextData" style="font-size: 11px; margin: 0;"></pre>
                     </div>
                 </div>
             </div>
