@@ -890,6 +890,19 @@ class ChatResponse(BaseModel):
     cost: float
     timestamp: str
 
+class ComprehensiveAnalysisRequest(BaseModel):
+    expertise_level: str  # "beginner", "intermediate", "expert"
+    focus_areas: Optional[List[str]] = None  # Specific areas to focus on
+
+class ComprehensiveAnalysisResponse(BaseModel):
+    analysis: str
+    expertise_level: str
+    data_sources_used: List[str]
+    key_insights: List[str]
+    tokens_used: Dict[str, int]
+    cost: float
+    timestamp: str
+
 def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
     """Count tokens for a given text"""
     try:
@@ -945,6 +958,184 @@ def save_cost_data(tokens: Dict[str, int], cost: float, user_message: str = "", 
             json.dump(cost_data, f, indent=2, ensure_ascii=False)
     except Exception as e:
         print(f"Error saving cost data: {e}")
+
+async def collect_all_grid_data() -> Dict[str, Any]:
+    """Collect comprehensive grid data from all available sources"""
+    grid_data = {
+        "timestamp": datetime.now().isoformat(),
+        "data_sources": [],
+        "errors": []
+    }
+    
+    try:
+        # Real-time supply and demand
+        supply_demand = await get_realtime_supply_demand()
+        if supply_demand.get("success"):
+            grid_data["supply_demand"] = supply_demand["data"]
+            grid_data["data_sources"].append("Supply & Demand")
+        else:
+            grid_data["errors"].append("Supply & Demand data unavailable")
+    except Exception as e:
+        grid_data["errors"].append(f"Supply & Demand error: {str(e)}")
+    
+    try:
+        # Fuel mix data
+        fuel_mix = await get_realtime_fuel_mix()
+        if fuel_mix.get("success"):
+            grid_data["fuel_mix"] = fuel_mix["data"]
+            grid_data["data_sources"].append("Fuel Mix")
+        else:
+            grid_data["errors"].append("Fuel Mix data unavailable")
+    except Exception as e:
+        grid_data["errors"].append(f"Fuel Mix error: {str(e)}")
+    
+    try:
+        # Generation outages
+        outages = await get_generation_outages()
+        if outages.get("success"):
+            grid_data["outages"] = outages["data"]
+            grid_data["data_sources"].append("Generation Outages")
+        else:
+            grid_data["errors"].append("Outages data unavailable")
+    except Exception as e:
+        grid_data["errors"].append(f"Outages error: {str(e)}")
+    
+    try:
+        # Wind and solar data
+        wind_data = await get_wind_power()
+        if wind_data.get("success"):
+            grid_data["wind_power"] = wind_data["data"]
+            grid_data["data_sources"].append("Wind Power")
+        else:
+            grid_data["errors"].append("Wind power data unavailable")
+    except Exception as e:
+        grid_data["errors"].append(f"Wind power error: {str(e)}")
+    
+    try:
+        solar_data = await get_solar_power()
+        if solar_data.get("success"):
+            grid_data["solar_power"] = solar_data["data"]
+            grid_data["data_sources"].append("Solar Power")
+        else:
+            grid_data["errors"].append("Solar power data unavailable")
+    except Exception as e:
+        grid_data["errors"].append(f"Solar power error: {str(e)}")
+    
+    try:
+        # PRC data
+        prc_data = await get_daily_prc()
+        if prc_data.get("success"):
+            grid_data["prc_data"] = prc_data["data"]
+            grid_data["data_sources"].append("Physical Responsive Capability")
+        else:
+            grid_data["errors"].append("PRC data unavailable")
+    except Exception as e:
+        grid_data["errors"].append(f"PRC error: {str(e)}")
+    
+    return grid_data
+
+def create_comprehensive_system_prompt(expertise_level: str, grid_data: Dict[str, Any], focus_areas: Optional[List[str]] = None) -> str:
+    """Create specialized system prompt based on expertise level"""
+    
+    base_data_context = f"""
+COMPREHENSIVE TEXAS GRID DATA ANALYSIS
+Timestamp: {grid_data.get('timestamp', 'N/A')}
+Data Sources Available: {', '.join(grid_data.get('data_sources', []))}
+
+GRID DATA SUMMARY:
+"""
+    
+    # Add data sections
+    if "supply_demand" in grid_data:
+        base_data_context += f"\nSUPPLY & DEMAND:\n{json.dumps(grid_data['supply_demand'], indent=2)[:1500]}\n"
+    
+    if "fuel_mix" in grid_data:
+        base_data_context += f"\nFUEL MIX:\n{json.dumps(grid_data['fuel_mix'], indent=2)[:1500]}\n"
+    
+    if "outages" in grid_data:
+        base_data_context += f"\nGENERATION OUTAGES:\n{json.dumps(grid_data['outages'], indent=2)[:1000]}\n"
+    
+    if "wind_power" in grid_data:
+        base_data_context += f"\nWIND POWER:\n{json.dumps(grid_data['wind_power'], indent=2)[:1000]}\n"
+    
+    if "solar_power" in grid_data:
+        base_data_context += f"\nSOLAR POWER:\n{json.dumps(grid_data['solar_power'], indent=2)[:1000]}\n"
+    
+    if "prc_data" in grid_data:
+        base_data_context += f"\nPHYSICAL RESPONSIVE CAPABILITY:\n{json.dumps(grid_data['prc_data'], indent=2)[:1000]}\n"
+    
+    if grid_data.get("errors"):
+        base_data_context += f"\nDATA LIMITATIONS:\n{', '.join(grid_data['errors'])}\n"
+    
+    # Expertise-specific prompts
+    if expertise_level == "beginner":
+        prompt = f"""{base_data_context}
+
+You are an expert energy analyst explaining the Texas electricity grid to BEGINNERS who are new to understanding how power systems work.
+
+Your analysis should:
+1. START with a simple, clear overview of what this data tells us about the Texas grid right now
+2. EXPLAIN basic concepts like:
+   - What is electricity demand and why it matters
+   - What are the different ways Texas generates electricity (natural gas, wind, solar, etc.)
+   - What does it mean when power plants are offline for maintenance or repairs
+   - Why grid reliability and having enough power available is important
+3. USE ANALOGIES and simple comparisons (like comparing the grid to a water system or traffic flow)
+4. HIGHLIGHT what's working well and what might be concerning in easy-to-understand terms
+5. AVOID technical jargon - explain everything in plain language
+6. STRUCTURE your response with clear sections and bullet points for easy reading
+7. FOCUS on the big picture rather than detailed technical analysis
+
+Make this accessible and educational for someone learning about energy systems for the first time."""
+    
+    elif expertise_level == "intermediate":
+        prompt = f"""{base_data_context}
+
+You are an expert energy analyst providing analysis for users with INTERMEDIATE knowledge of power systems and energy markets.
+
+Your analysis should:
+1. PROVIDE a comprehensive overview of current grid conditions with moderate technical detail
+2. EXPLAIN key metrics and their significance:
+   - Load factors and capacity utilization
+   - Generation mix optimization and efficiency
+   - Market pricing implications
+   - Grid stability indicators
+3. IDENTIFY trends and patterns in the data
+4. DISCUSS operational challenges and how they're being managed
+5. CONNECT different data points to show relationships (e.g., how weather affects renewable generation and pricing)
+6. INCLUDE some technical terminology but explain complex concepts clearly
+7. HIGHLIGHT both current status and potential future implications
+8. PROVIDE actionable insights for understanding grid performance
+
+Balance technical accuracy with accessibility for users who understand energy basics but aren't experts."""
+    
+    else:  # expert level
+        prompt = f"""{base_data_context}
+
+You are providing EXPERT-LEVEL analysis for power system professionals, energy traders, grid operators, and technical specialists.
+
+Your analysis should:
+1. DELIVER detailed technical analysis with full industry terminology
+2. ANALYZE complex interdependencies between:
+   - Supply-demand balance and reserve margins
+   - Generation unit commitment and economic dispatch
+   - Transmission constraints and congestion patterns
+   - Ancillary services and grid stability mechanisms
+3. EVALUATE market efficiency and pricing dynamics
+4. ASSESS operational risks and reliability metrics
+5. IDENTIFY optimization opportunities and system vulnerabilities
+6. PROVIDE quantitative analysis where possible (capacity factors, heat rates, etc.)
+7. DISCUSS regulatory and policy implications
+8. OFFER strategic insights for operations, trading, and planning decisions
+9. REFERENCE industry standards and best practices
+
+Provide the depth and technical rigor expected by energy industry professionals."""
+    
+    # Add focus areas if specified
+    if focus_areas:
+        prompt += f"\n\nSPECIAL FOCUS: Pay particular attention to these areas: {', '.join(focus_areas)}"
+    
+    return prompt
 
 def create_system_prompt(context: Dict[str, Any]) -> str:
     """Create a system prompt with dashboard context"""
@@ -1128,6 +1319,100 @@ async def clear_ai_history():
             os.remove(AI_COST_FILE)
         return {"success": True, "message": "AI history cleared"}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/ai/comprehensive-analysis", response_model=ComprehensiveAnalysisResponse)
+async def comprehensive_grid_analysis(analysis_request: ComprehensiveAnalysisRequest):
+    """Generate comprehensive grid analysis based on expertise level"""
+    if not openai_client:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+    
+    try:
+        print(f"[DEBUG] Starting comprehensive analysis for {analysis_request.expertise_level} level")
+        
+        # Collect all available grid data
+        grid_data = await collect_all_grid_data()
+        print(f"[DEBUG] Collected data from {len(grid_data.get('data_sources', []))} sources")
+        
+        # Create specialized system prompt
+        system_prompt = create_comprehensive_system_prompt(
+            analysis_request.expertise_level, 
+            grid_data, 
+            analysis_request.focus_areas
+        )
+        
+        # Count input tokens
+        input_tokens = count_tokens(system_prompt)
+        
+        # Call GPT-5-nano for comprehensive analysis
+        print(f"[DEBUG] Calling GPT-5-nano for {analysis_request.expertise_level} level analysis")
+        
+        response = openai_client.responses.create(
+            model="gpt-5-nano",
+            input=system_prompt,
+            text={"format": {"type": "text"}}
+        )
+        
+        # Extract response text
+        ai_response = ""
+        if hasattr(response, 'output') and response.output:
+            for item in response.output:
+                if hasattr(item, 'content') and item.content:
+                    for content in item.content:
+                        if hasattr(content, 'text'):
+                            ai_response += content.text
+        
+        output_tokens = count_tokens(ai_response) if ai_response else 0
+        
+        # Calculate cost
+        tokens_used = {"input": input_tokens, "output": output_tokens}
+        cost = calculate_cost(input_tokens, output_tokens)
+        
+        # Extract key insights from the response (simple extraction)
+        key_insights = []
+        if ai_response:
+            lines = ai_response.split('\n')
+            for line in lines:
+                line = line.strip()
+                if (line.startswith('•') or line.startswith('-') or line.startswith('*') or 
+                    'KEY:' in line.upper() or 'IMPORTANT:' in line.upper() or
+                    'CRITICAL:' in line.upper() or 'NOTE:' in line.upper()):
+                    key_insights.append(line[:200])  # Limit length
+                if len(key_insights) >= 10:  # Limit to top 10 insights
+                    break
+        
+        # Save cost data with comprehensive analysis context
+        comprehensive_context = {
+            "analysis_type": "comprehensive",
+            "expertise_level": analysis_request.expertise_level,
+            "data_sources": grid_data.get('data_sources', []),
+            "focus_areas": analysis_request.focus_areas,
+            "errors": grid_data.get('errors', [])
+        }
+        save_cost_data(
+            tokens_used, 
+            cost, 
+            f"Comprehensive {analysis_request.expertise_level} analysis", 
+            ai_response, 
+            comprehensive_context
+        )
+        
+        print(f"[DEBUG] Analysis complete. Used {input_tokens} input + {output_tokens} output tokens")
+        
+        return ComprehensiveAnalysisResponse(
+            analysis=ai_response,
+            expertise_level=analysis_request.expertise_level,
+            data_sources_used=grid_data.get('data_sources', []),
+            key_insights=key_insights,
+            tokens_used=tokens_used,
+            cost=cost,
+            timestamp=datetime.now().isoformat()
+        )
+        
+    except Exception as e:
+        print(f"[ERROR] Comprehensive analysis failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

@@ -302,6 +302,42 @@ The application integrates with several ERCOT API endpoints:
 - **Session Persistence**: Conversation history and context retention
 - **Cost Tracking**: Detailed usage monitoring and cost analysis
 
+### Enhanced AI Capabilities - Comprehensive Grid Analysis
+
+The dashboard features advanced AI analysis capabilities that provide tailored insights based on user expertise levels:
+
+#### 🧠 Multi-Level Analysis Modes
+- **📚 Beginner Analysis**: Simple explanations with analogies, focusing on basic concepts like demand vs. capacity and generation types
+- **🔧 Intermediate Analysis**: Moderate technical detail with key metrics and relationships between data points
+- **⚡ Expert Analysis**: Full technical depth with industry terminology and strategic insights for professionals
+
+#### 🔍 Comprehensive Data Integration
+The AI assistant automatically analyzes data from ALL available sources:
+- Real-time supply & demand conditions
+- Generation fuel mix and renewable production
+- Wind and solar power forecasts and actuals
+- Generation outages and maintenance schedules
+- Physical Responsive Capability (PRC) data
+- Market pricing and settlement point data
+
+#### 🎯 One-Click Analysis
+Users can instantly get comprehensive grid understanding tailored to their expertise level with a single button click in the AI chat interface.
+
+![Beginner Analysis Example](./images/AI_Beginner_Analysis.png)
+
+**Example Beginner Analysis Output:**
+The AI provides clear, educational explanations such as:
+- Current grid capacity vs. demand with easy-to-understand numbers
+- Explanation of different electricity generation sources (natural gas, wind, solar, etc.)
+- Assessment of grid reliability and available spare capacity
+- Simple interpretation of what outages mean for grid operations
+- Plain-language summary of current market conditions
+
+**Cost Efficiency:**
+- Typical analysis costs: $0.0007 - $0.002 per comprehensive analysis
+- Uses 3,000-5,000 tokens depending on data complexity
+- Provides extensive insights at minimal cost
+
 ## Data Refresh and Updates
 
 - **Automatic Refresh**: Data updates every 5 minutes for real-time accuracy
@@ -318,13 +354,24 @@ The application integrates with several ERCOT API endpoints:
 4. Monitor **DER** tab for renewable contribution
 
 ### AI-Powered Analysis
-1. Open the **AI Assistant** tab
-2. Select data sources (single tab or all tabs)
-3. Ask questions like:
+
+#### Comprehensive Grid Analysis (Recommended)
+1. Click the **Chat Button** (💬) to open the AI Assistant
+2. Choose your expertise level:
+   - **📚 Beginner Analysis**: Perfect for learning about energy systems
+   - **🔧 Intermediate Analysis**: Great for understanding grid operations
+   - **⚡ Expert Analysis**: Detailed technical analysis for professionals
+3. Get instant comprehensive analysis of ALL grid data tailored to your level
+
+#### Custom Chat Analysis
+1. Open the **AI Assistant** chat interface
+2. Select additional data sources from dropdown (optional - current tab included automatically)
+3. Ask specific questions like:
    - "What's causing today's price volatility?"
    - "How efficient is wind generation today?"
    - "Compare current demand to seasonal averages"
-4. Review session history for previous insights
+   - "Explain the current fuel mix and what it means for prices"
+4. Review session history and cost tracking in the **AI Cost** tab
 
 ## Troubleshooting
 
