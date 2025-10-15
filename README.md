@@ -323,6 +323,11 @@ The AI assistant automatically analyzes data from ALL available sources:
 #### 🎯 One-Click Analysis
 Users can instantly get comprehensive grid understanding tailored to their expertise level with a single button click in the AI chat interface.
 
+![AI Analysis Types Interface](./images/AI_Types_Beginner_Intermediate_Expert.png)
+
+**AI Analysis Interface:**
+The chat interface provides three clearly labeled buttons for different expertise levels, making it easy for users to select the appropriate analysis depth for their needs.
+
 ![Beginner Analysis Example](./images/AI_Beginner_Analysis.png)
 
 **Example Beginner Analysis Output:**
